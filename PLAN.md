@@ -91,6 +91,14 @@ white" with an explicit warning in the UI, never as the foundation.
     isolation (`MainActor.assumeIsolated`) and `CADisplayLink`, which ties the
     animation tick to the display the overlay actually sits on instead of a
     fixed 60 Hz timer.
+14. **App Sandbox is on**, even though the Mac App Store is not the plan. It
+    costs nothing here, which was measured rather than assumed: inside the
+    sandbox the gamma table still applies, ScreenCaptureKit still runs (the TCC
+    grant follows the signature, not the container), the Carbon hotkey still
+    fires and `SMAppService` still registers. The shaders folder moves into the
+    container, and the "Open shaders folder" button leads there, so putting a
+    shader in by hand works the same way. Existing preferences are migrated into
+    the container by the system on first launch.
 
 ## System permissions
 

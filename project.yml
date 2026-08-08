@@ -48,6 +48,7 @@ targets:
         # не заваливая сборку шумом от AppKit
         SWIFT_STRICT_CONCURRENCY: targeted
         ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: Resources/ScreenFilter.entitlements
         SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
