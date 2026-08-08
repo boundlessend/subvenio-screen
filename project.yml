@@ -47,7 +47,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.senya.SubvenioScreen
         PRODUCT_NAME: "Subvenio Screen"
-        MARKETING_VERSION: "1.2.0"
+        MARKETING_VERSION: "1.3.0"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.0"
         # ловит гонки на границах, где уже расставлены акторы и Sendable,
