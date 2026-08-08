@@ -706,17 +706,6 @@
         }
       }
     },
-    "Retro effects over everything on screen - scanlines, film grain, VHS, sepia and honest black and white - switched on and off with one hotkey.\n\nEffects are folders with a Metal shader, so the list is yours to extend.": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ретро-эффекты поверх всего на экране - строчная развёртка, зерно плёнки, VHS, сепия и честное чёрно-белое - включаются и выключаются одной комбинацией клавиш.\n\nЭффект это папка с шейдером на Metal, так что список можно пополнять своими."
-          }
-        }
-      }
-    },
     "Screen capture failed to start": {
       "extractionState": "manual",
       "localizations": {
@@ -1032,6 +1021,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "не выбрано"
+          }
+        }
+      }
+    },
+    "old glass over a new screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "старое стекло поверх нового экрана"
           }
         }
       }

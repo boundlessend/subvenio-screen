@@ -139,12 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// а credits это единственное место, куда влезает описание
     @objc private func showAbout() {
         activateApp()
-        let description = String(localized: """
-        Retro effects over everything on screen - scanlines, film grain, VHS, \
-        sepia and honest black and white - switched on and off with one hotkey.
-
-        Effects are folders with a Metal shader, so the list is yours to extend.
-        """)
+        let description = String(localized: "old glass over a new screen")
         let credits = NSAttributedString(
             string: description,
             attributes: [
