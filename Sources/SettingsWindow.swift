@@ -6,6 +6,7 @@ struct SettingsView: View {
     @ObservedObject var effects: EffectController
     /// список окон снимается при открытии и по кнопке: он живой и меняется постоянно
     @State private var windows: [TrackedWindow] = availableWindows()
+    @State private var launchAtLogin = isLaunchAtLoginEnabled()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -98,6 +99,11 @@ struct SettingsView: View {
                 // проверка конфликтов с системными комбинациями идёт из коробки
                 KeyboardShortcuts.Recorder("Переключить эффект:", name: .toggleEffect)
 
+                Toggle("Запускать при входе в систему", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { setLaunchAtLoginSafely($0) }
+                ))
+
                 Spacer()
 
                 if !effects.loadErrors.isEmpty {
@@ -147,6 +153,16 @@ struct SettingsView: View {
                 effects.resetParameters(for: plugin)
             }
         }
+    }
+
+    private func setLaunchAtLoginSafely(_ enabled: Bool) {
+        do {
+            try setLaunchAtLogin(enabled)
+        } catch {
+            showAlert(title: "Не удалось изменить автозапуск", message: error.localizedDescription)
+        }
+        // состояние берём у системы, а не у переключателя: регистрация могла не пройти
+        launchAtLogin = isLaunchAtLoginEnabled()
     }
 
     private func levelDescription(_ level: RenderLevel) -> String {
