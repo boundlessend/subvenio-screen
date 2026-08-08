@@ -9,23 +9,24 @@ struct SettingsView: View {
     /// список окон живой и меняется постоянно, поэтому обновляется сам, пока секция видна
     @State private var windows: [TrackedWindow] = availableWindows()
     @State private var launchAtLogin = isLaunchAtLoginEnabled()
+    @State private var isConfirmingRestore = false
 
     private let windowRefresh = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Form {
-            if let plugin = effects.selectedPlugin {
-                effectSection(for: plugin)
-                placementSection(for: plugin)
-                if plugin.manifest.level == .capture {
-                    captureSection(for: plugin)
-                }
-            } else {
-                Section {
+            if effects.plugins.isEmpty {
+                Section("Effect") {
                     Text("No presets available")
                         .foregroundStyle(.secondary)
-                    Button("Open shaders folder") {
-                        NSWorkspace.shared.open(shadersDirectory())
+                    presetButtons
+                }
+            } else {
+                effectSection
+                if let plugin = effects.selectedPlugin {
+                    placementSection(for: plugin)
+                    if plugin.manifest.level == .capture {
+                        captureSection(for: plugin)
                     }
                 }
             }
@@ -47,12 +48,13 @@ struct SettingsView: View {
         .frame(minWidth: 700, minHeight: 560)
     }
 
-    /// пресет, его параметры и превью рядом с ними: ползунок и результат в одном месте
+    /// пресет, переключатель, параметры и превью рядом с ними: выбор, ползунок
+    /// и результат в одном месте
     @ViewBuilder
-    private func effectSection(for plugin: ShaderPlugin) -> some View {
+    private var effectSection: some View {
         Section("Effect") {
             Picker("Preset", selection: Binding(
-                get: { effects.selectedIdentifier ?? plugin.identifier },
+                get: { effects.selectedIdentifier ?? effects.plugins.first?.identifier ?? "" },
                 // анимация нужна самому переходу превью: без транзакции SwiftUI
                 // подменит картинку мгновенно
                 set: { identifier in
@@ -66,30 +68,63 @@ struct SettingsView: View {
                 }
             }
 
-            Text(levelDescription(plugin.manifest.level))
-                .font(.callout)
-                .foregroundStyle(.secondary)
+            // включение живёт и в меню-баре, и на хоткее, но человек, открывший настройки,
+            // ищет его здесь: без переключателя окно показывает эффект, не умея его применить
+            Toggle("Effect on screen", isOn: Binding(
+                get: { effects.isEnabled },
+                set: { $0 ? effects.enable() : effects.disable() }
+            ))
 
-            HStack(alignment: .top, spacing: 20) {
-                parameterControls(for: plugin)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                EffectPreview(plugin: plugin, parameters: effects.parameters(for: plugin))
-                    .frame(width: 260, height: 150)
-                    .id(plugin.identifier)
-                    // смена пресета как смена кадра плёнки: по теме и заодно скрывает
-                    // паузу на компиляцию нового шейдера
-                    .transition(.movingParts.filmExposure)
+            if let plugin = effects.selectedPlugin {
+                Text(levelDescription(plugin.manifest.level))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+
+                HStack(alignment: .top, spacing: 20) {
+                    parameterControls(for: plugin)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    EffectPreview(plugin: plugin, parameters: effects.parameters(for: plugin))
+                        .frame(width: 260, height: 150)
+                        .id(plugin.identifier)
+                        // смена пресета как смена кадра плёнки: по теме и заодно скрывает
+                        // паузу на компиляцию нового шейдера
+                        .transition(.movingParts.filmExposure)
+                }
+            } else {
+                Text("The selected preset is no longer in the shaders folder. Pick another one.")
+                    .font(.callout)
+                    .foregroundStyle(.red)
             }
 
             HStack(spacing: 12) {
-                if plugin.manifest.parameters?.isEmpty == false {
+                if effects.selectedPlugin?.manifest.parameters?.isEmpty == false,
+                   let plugin = effects.selectedPlugin {
                     Button("Reset to defaults") {
                         effects.resetParameters(for: plugin)
                     }
                 }
-                Button("Open shaders folder") {
-                    NSWorkspace.shared.open(shadersDirectory())
-                }
+                presetButtons
+            }
+        }
+    }
+
+    /// путь к своим пресетам и путь назад к встроенным
+    private var presetButtons: some View {
+        HStack(spacing: 12) {
+            Button("Open shaders folder") {
+                NSWorkspace.shared.open(shadersDirectory())
+            }
+            Button("Restore bundled presets") {
+                isConfirmingRestore = true
+            }
+            .confirmationDialog(
+                "Restore the bundled presets?",
+                isPresented: $isConfirmingRestore
+            ) {
+                Button("Restore", role: .destructive) { effects.restoreBundled() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your edits to the six bundled presets will be lost. Presets you added yourself are left alone.")
             }
         }
     }

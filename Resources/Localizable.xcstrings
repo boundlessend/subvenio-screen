@@ -387,6 +387,17 @@
         }
       }
     },
+    "Effect on screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эффект на экране"
+          }
+        }
+      }
+    },
     "Effect turned off": {
       "extractionState": "manual",
       "localizations": {
@@ -717,6 +728,17 @@
         }
       }
     },
+    "Presets could not be restored": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось вернуть пресеты"
+          }
+        }
+      }
+    },
     "Quit": {
       "extractionState": "manual",
       "localizations": {
@@ -746,6 +768,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сбросить к умолчаниям"
+          }
+        }
+      }
+    },
+    "Restore": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть"
+          }
+        }
+      }
+    },
+    "Restore bundled presets": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть встроенные пресеты"
+          }
+        }
+      }
+    },
+    "Restore the bundled presets?": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть встроенные пресеты?"
           }
         }
       }
@@ -834,6 +889,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дисплей, на который был назначен эффект, больше не подключён."
+          }
+        }
+      }
+    },
+    "The selected preset is no longer in the shaders folder. Pick another one.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбранного пресета больше нет в папке шейдеров. Выберите другой."
           }
         }
       }
@@ -988,6 +1054,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Окно:"
+          }
+        }
+      }
+    },
+    "Your edits to the six bundled presets will be lost. Presets you added yourself are left alone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваши правки шести встроенных пресетов пропадут. Пресеты, добавленные вами, останутся на месте."
           }
         }
       }

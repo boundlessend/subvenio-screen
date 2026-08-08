@@ -109,10 +109,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateStatusIcon()
     }
 
+    /// выбор пресета это выбор, а не включение: работающий эффект подменится сам,
+    /// выключенный останется выключенным и не потянет за собой запрос разрешения
     @objc private func selectPlugin(_ sender: NSMenuItem) {
         guard let identifier = sender.representedObject as? String else { return }
         effects.selectedIdentifier = identifier
-        effects.enable()
         updateStatusIcon()
     }
 

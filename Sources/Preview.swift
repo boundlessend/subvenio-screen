@@ -93,6 +93,19 @@ final class PreviewView: NSView {
             name: NSWindow.didChangeOcclusionStateNotification,
             object: nil
         )
+        // окно, целиком закрытое чужим приложением, macOS занятым не считает,
+        // поэтому уход из активных это второй признак того, что на превью никто не смотрит
+        for name: NSNotification.Name in [
+            NSApplication.didResignActiveNotification,
+            NSApplication.didBecomeActiveNotification
+        ] {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(activationDidChange),
+                name: name,
+                object: nil
+            )
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -199,6 +212,7 @@ final class PreviewView: NSView {
     /// приходит на каждое движение ползунка
     private func setAnimating(_ animating: Bool) {
         let wanted = animating
+            && NSApp.isActive
             && window?.occlusionState.contains(.visible) == true
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         guard wanted != (tickLink != nil) else { return }
@@ -221,6 +235,10 @@ final class PreviewView: NSView {
 
     @objc private func occlusionDidChange(_ notification: Notification) {
         guard let changed = notification.object as? NSWindow, changed == window else { return }
+        setAnimating(plugin?.isAnimated ?? false)
+    }
+
+    @objc private func activationDidChange() {
         setAnimating(plugin?.isAnimated ?? false)
     }
 }
