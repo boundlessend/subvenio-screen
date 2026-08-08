@@ -54,7 +54,12 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate {
 
     /// масштаб и частоту передаёт вызывающий: NSScreen читается только с главного потока,
     /// а старт потока живёт вне его
-    func start(scale: CGFloat, framesPerSecond: Int) async throws {
+    func start(
+        displayID: CGDirectDisplayID,
+        scale: CGFloat,
+        framesPerSecond: Int,
+        showsCursor: Bool
+    ) async throws {
         guard hasScreenRecordingAccess() else {
             throw CaptureError.accessDenied
         }
@@ -63,7 +68,7 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate {
             false,
             onScreenWindowsOnly: true
         )
-        guard let display = content.displays.first(where: { $0.displayID == CGMainDisplayID() })
+        guard let display = content.displays.first(where: { $0.displayID == displayID })
             ?? content.displays.first else {
             throw CaptureError.noDisplay
         }
@@ -77,9 +82,9 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate {
         configuration.width = Int(CGFloat(display.width) * scale)
         configuration.height = Int(CGFloat(display.height) * scale)
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
-        // курсор рисует система поверх эффекта: нарисованный внутри кадра отставал бы
-        // на всю задержку пайплайна и читался бы как лаг мыши
-        configuration.showsCursor = false
+        // по умолчанию курсор рисует система поверх эффекта: попав внутрь кадра, он отстаёт
+        // на всю задержку пайплайна и читается как лаг мыши
+        configuration.showsCursor = showsCursor
         configuration.queueDepth = 3
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(framesPerSecond))
 

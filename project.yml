@@ -5,10 +5,19 @@ options:
     macOS: "13.0"
   createIntermediateGroups: true
 
+packages:
+  # запись комбинаций в UI и проверка конфликтов из коробки, под капотом тот же Carbon,
+  # Accessibility не требует
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 2.0.0
+
 targets:
   ScreenFilter:
     type: application
     platform: macOS
+    dependencies:
+      - package: KeyboardShortcuts
     sources:
       - Sources
       # folder reference: пресеты попадают в бандл со своей структурой папок

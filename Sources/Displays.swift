@@ -1,0 +1,24 @@
+import AppKit
+
+extension NSScreen {
+    /// идентификатор дисплея, которым оперируют CoreGraphics и ScreenCaptureKit
+    var displayID: CGDirectDisplayID {
+        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+            ?? CGMainDisplayID()
+    }
+}
+
+struct DisplayChoice: Identifiable, Hashable {
+    let id: CGDirectDisplayID
+    let name: String
+}
+
+func availableDisplays() -> [DisplayChoice] {
+    NSScreen.screens.map { DisplayChoice(id: $0.displayID, name: $0.localizedName) }
+}
+
+/// экран по идентификатору, с откатом на главный: монитор могли отключить,
+/// пока приложение работало
+func screen(for displayID: CGDirectDisplayID) -> NSScreen? {
+    NSScreen.screens.first { $0.displayID == displayID } ?? NSScreen.screens.first
+}

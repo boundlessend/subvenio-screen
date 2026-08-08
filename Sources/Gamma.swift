@@ -33,6 +33,7 @@ func gammaTables(_ settings: GammaSettings, size: Int) -> (red: [Float], green: 
 /// меню-бар и Dock и не стоит ничего по нагрузке
 final class GammaController {
     private var active: GammaSettings?
+    private var activeDisplayID: CGDirectDisplayID = CGMainDisplayID()
 
     init() {
         NotificationCenter.default.addObserver(
@@ -51,9 +52,10 @@ final class GammaController {
         installRestoreOnSignals()
     }
 
-    func activate(_ settings: GammaSettings) throws {
-        try apply(settings)
+    func activate(_ settings: GammaSettings, displayID: CGDirectDisplayID) throws {
+        try apply(settings, displayID: displayID)
         active = settings
+        activeDisplayID = displayID
     }
 
     func deactivate() {
@@ -62,8 +64,7 @@ final class GammaController {
         CGDisplayRestoreColorSyncSettings()
     }
 
-    private func apply(_ settings: GammaSettings) throws {
-        let display = CGMainDisplayID()
+    private func apply(_ settings: GammaSettings, displayID display: CGDirectDisplayID) throws {
         let capacity = Int(CGDisplayGammaTableCapacity(display))
         let tables = gammaTables(settings, size: capacity)
         let result = CGSetDisplayTransferByTable(
@@ -81,7 +82,7 @@ final class GammaController {
     @objc private func reapply() {
         guard let active else { return }
         do {
-            try apply(active)
+            try apply(active, displayID: activeDisplayID)
         } catch {
             NSLog("не удалось переприменить гамму: \(error.localizedDescription)")
         }

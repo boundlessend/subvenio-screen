@@ -144,6 +144,7 @@ final class OverlayController {
     private var timer: Timer?
     private var startTime: CFTimeInterval = 0
     private var currentPlugin: ShaderPlugin?
+    private var currentDisplayID: CGDirectDisplayID = CGMainDisplayID()
     private var capture: CaptureController?
 
     init() {
@@ -155,21 +156,37 @@ final class OverlayController {
         )
     }
 
-    func show(plugin: ShaderPlugin) throws {
-        let view = try prepareWindow(for: plugin)
+    func show(plugin: ShaderPlugin, parameters: [Float], displayID: CGDirectDisplayID) throws {
+        let view = try prepareWindow(for: plugin, parameters: parameters, displayID: displayID)
         view.render(source: nil)
         setAnimating(plugin.isAnimated)
     }
 
+    /// правка слайдера в настройках доезжает до работающего эффекта без перезапуска
+    func updateParameters(_ values: [Float]) {
+        guard let view = window?.contentView as? OverlayView else { return }
+        view.parameters = values
+        // анимированный пресет и захват перерисуются сами со следующим кадром
+        if timer == nil, capture == nil {
+            view.render(source: nil)
+        }
+    }
+
     /// уровень 3: окно поднимается до старта потока, чтобы попасть в список исключений
     /// SCContentFilter. кадры приходят с очереди захвата и рисуются на главной
-    func showCapture(plugin: ShaderPlugin, onStop: @escaping (Error) -> Void) async throws {
+    func showCapture(
+        plugin: ShaderPlugin,
+        parameters: [Float],
+        displayID: CGDirectDisplayID,
+        showsCursor: Bool,
+        onStop: @escaping (Error) -> Void
+    ) async throws {
         // async-функция без изоляции исполняется вне главного потока, а NSWindow и NSScreen
         // допустимы только на нём
         let (scale, framesPerSecond) = try await MainActor.run { () -> (CGFloat, Int) in
-            _ = try prepareWindow(for: plugin)
-            let screen = NSScreen.screens.first
-            return (screen?.backingScaleFactor ?? 2, screen?.maximumFramesPerSecond ?? 60)
+            _ = try prepareWindow(for: plugin, parameters: parameters, displayID: displayID)
+            let target = screen(for: displayID)
+            return (target?.backingScaleFactor ?? 2, target?.maximumFramesPerSecond ?? 60)
         }
 
         let capture = CaptureController(
@@ -184,7 +201,12 @@ final class OverlayController {
             },
             onStop: onStop
         )
-        try await capture.start(scale: scale, framesPerSecond: framesPerSecond)
+        try await capture.start(
+            displayID: displayID,
+            scale: scale,
+            framesPerSecond: framesPerSecond,
+            showsCursor: showsCursor
+        )
         self.capture = capture
     }
 
@@ -197,21 +219,26 @@ final class OverlayController {
         currentPlugin = nil
     }
 
-    private func prepareWindow(for plugin: ShaderPlugin) throws -> OverlayView {
+    private func prepareWindow(
+        for plugin: ShaderPlugin,
+        parameters: [Float],
+        displayID: CGDirectDisplayID
+    ) throws -> OverlayView {
         let pipeline = try cachedPipeline(for: plugin)
         currentPlugin = plugin
+        currentDisplayID = displayID
 
-        guard let screen = NSScreen.screens.first else {
+        guard let target = screen(for: displayID) else {
             throw CaptureError.noDisplay
         }
-        let window = self.window ?? OverlayWindow(screen: screen, renderer: renderer)
-        window.setFrame(screen.frame, display: true)
+        let window = self.window ?? OverlayWindow(screen: target, renderer: renderer)
+        window.setFrame(target.frame, display: true)
 
         guard let view = window.contentView as? OverlayView else {
             fatalError("у оверлейного окна не тот contentView")
         }
         view.pipeline = pipeline
-        view.parameters = plugin.defaultParameters
+        view.parameters = parameters
         view.time = 0
 
         window.orderFrontRegardless()
@@ -247,8 +274,8 @@ final class OverlayController {
     }
 
     @objc private func screenParametersDidChange() {
-        guard let window, let screen = NSScreen.screens.first else { return }
-        window.setFrame(screen.frame, display: true)
+        guard let window, let target = screen(for: currentDisplayID) else { return }
+        window.setFrame(target.frame, display: true)
         (window.contentView as? OverlayView)?.render(source: nil)
     }
 }
