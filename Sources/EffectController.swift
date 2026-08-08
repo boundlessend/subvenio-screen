@@ -148,6 +148,20 @@ final class EffectController: ObservableObject {
         }
     }
 
+    /// встроенные пресеты обратно в исходный вид: единственный путь починить тот,
+    /// который правили руками и сломали
+    func restoreBundled() {
+        do {
+            try restoreBundledPlugins(into: shadersDirectory())
+            reload()
+        } catch {
+            report(
+                title: String(localized: "Presets could not be restored"),
+                message: error.localizedDescription
+            )
+        }
+    }
+
     func parameters(for plugin: ShaderPlugin) -> [Float] {
         settings.parameters(for: plugin)
     }

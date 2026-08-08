@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// уровень рендеринга из PLAN.md: 1 гамма-LUT, 2 alpha-оверлей, 3 захват экрана
@@ -155,10 +156,74 @@ func shadersDirectory() -> URL {
     return support.appendingPathComponent("SubvenioScreen/Shaders", isDirectory: true)
 }
 
-/// копирует встроенные пресеты, которых ещё нет на диске. существующие папки не трогает,
-/// иначе правки пользователя затирались бы при каждом старте, но новые пресеты
-/// из обновления приложения доезжают
+/// отпечаток содержимого пресета: имена файлов и их байты по порядку.
+/// по нему видно, трогал ли пользователь то, что мы положили
+func pluginDigest(_ directory: URL) -> String? {
+    guard let files = try? FileManager.default.contentsOfDirectory(
+        at: directory,
+        includingPropertiesForKeys: nil,
+        options: [.skipsHiddenFiles]
+    ) else { return nil }
+
+    var hasher = SHA256()
+    for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+        guard let data = try? Data(contentsOf: file) else { return nil }
+        hasher.update(data: Data(file.lastPathComponent.utf8))
+        hasher.update(data: data)
+    }
+    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+}
+
+private func installedDigestKey(_ identifier: String) -> String {
+    "bundled.\(identifier).digest"
+}
+
+/// копирует недостающие встроенные пресеты и обновляет те, которых пользователь не касался.
+/// без обновления исправленный шейдер новой версии не доезжал бы до тех, у кого папка уже
+/// есть; правки узнаются по отпечатку, записанному в момент установки, и остаются на месте
 func installBundledPlugins(into directory: URL, from bundle: Bundle = .main) throws {
+    guard let bundled = bundle.url(forResource: "Shaders", withExtension: nil) else {
+        throw CocoaError(.fileNoSuchFile)
+    }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+    let entries = try FileManager.default.contentsOfDirectory(
+        at: bundled,
+        includingPropertiesForKeys: nil,
+        options: [.skipsHiddenFiles]
+    )
+    let defaults = UserDefaults.standard
+    for entry in entries {
+        let identifier = entry.lastPathComponent
+        let destination = directory.appendingPathComponent(identifier)
+        let key = installedDigestKey(identifier)
+
+        guard FileManager.default.fileExists(atPath: destination.path) else {
+            try FileManager.default.copyItem(at: entry, to: destination)
+            defaults.set(pluginDigest(destination), forKey: key)
+            continue
+        }
+
+        let onDisk = pluginDigest(destination)
+        guard let installed = defaults.string(forKey: key) else {
+            // пресет приехал версией приложения, которая отпечатков ещё не вела:
+            // считаем его правленым и запоминаем как есть, чтобы дальше механизм работал
+            defaults.set(onDisk, forKey: key)
+            continue
+        }
+        // пресет правил пользователь, либо он уже совпадает со встроенным
+        guard onDisk == installed, pluginDigest(entry) != installed else { continue }
+
+        try FileManager.default.removeItem(at: destination)
+        try FileManager.default.copyItem(at: entry, to: destination)
+        defaults.set(pluginDigest(destination), forKey: key)
+        Log.plugins.info("bundled preset updated: \(identifier, privacy: .public)")
+    }
+}
+
+/// возвращает встроенные пресеты к виду, в котором они приехали с приложением.
+/// вызывается только по явной просьбе: правки пользователя здесь теряются
+func restoreBundledPlugins(into directory: URL, from bundle: Bundle = .main) throws {
     guard let bundled = bundle.url(forResource: "Shaders", withExtension: nil) else {
         throw CocoaError(.fileNoSuchFile)
     }
@@ -171,8 +236,14 @@ func installBundledPlugins(into directory: URL, from bundle: Bundle = .main) thr
     )
     for entry in entries {
         let destination = directory.appendingPathComponent(entry.lastPathComponent)
-        guard !FileManager.default.fileExists(atPath: destination.path) else { continue }
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+        }
         try FileManager.default.copyItem(at: entry, to: destination)
+        UserDefaults.standard.set(
+            pluginDigest(destination),
+            forKey: installedDigestKey(entry.lastPathComponent)
+        )
     }
 }
 
