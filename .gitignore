@@ -1,0 +1,7 @@
+.DS_Store
+DerivedData/
+build/
+
+# проект генерируется из project.yml командой xcodegen generate
+*.xcodeproj/
+*.xcworkspace/
