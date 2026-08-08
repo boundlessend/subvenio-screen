@@ -61,6 +61,9 @@ final class OverlayView: NSView {
     var time: Double = 0
     /// какой кусок кадра дисплея показывает этот оверлей, в долях от кадра
     var sourceRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+    /// уровень 3 рисует только по кадру захвата: без него шейдер прочитал бы пустую
+    /// текстуру и выдал чёрный кадр между настоящими
+    var expectsSource = false
 
     init(renderer: OverlayRenderer) {
         self.renderer = renderer
@@ -94,10 +97,15 @@ final class OverlayView: NSView {
     func render(source: MTLTexture?) {
         guard let layer = layer as? CAMetalLayer,
               let pipeline,
-              let scale = window?.backingScaleFactor else { return }
+              let scale = window?.backingScaleFactor,
+              source != nil || !expectsSource else { return }
 
-        layer.contentsScale = scale
-        layer.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+        // переприсваивание размера пересобирает пул drawable, поэтому только при изменении
+        let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
+        if layer.drawableSize != size {
+            layer.contentsScale = scale
+            layer.drawableSize = size
+        }
         renderer.draw(
             in: layer,
             pipeline: pipeline,
@@ -221,12 +229,13 @@ final class OverlayController {
 
         let capture = CaptureController(
             device: renderer.device,
-            onFrame: { [weak self] texture in
+            onFrame: { [weak self] frame in
                 // ponytail: без пропуска кадров. рисование одного треугольника дешевле
-                // кадра дисплея, начнёт отставать - появится флаг занятости
+                // кадра дисплея, начнёт отставать - появится флаг занятости.
+                // frame захватывается замыканием целиком: его буферы должны дожить до отрисовки
                 DispatchQueue.main.async {
                     guard let view = self?.window?.contentView as? OverlayView else { return }
-                    view.render(source: texture)
+                    view.render(source: frame.texture)
                 }
             },
             onStop: onStop
@@ -271,6 +280,7 @@ final class OverlayController {
         view.pipeline = pipeline
         view.parameters = parameters
         view.sourceRect = sourceRect(for: frame, on: target)
+        view.expectsSource = plugin.manifest.level == .capture
         view.time = 0
 
         window.orderFrontRegardless()

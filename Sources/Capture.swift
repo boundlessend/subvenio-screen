@@ -36,17 +36,37 @@ func openScreenRecordingSettings() {
     NSWorkspace.shared.open(url)
 }
 
+/// кадр захвата вместе с тем, что удерживает его пиксели живыми.
+/// MTLTexture смотрит на IOSurface из пула захвата: отпустишь CVMetalTexture
+/// или CVPixelBuffer раньше отрисовки, и пул отдаст поверхность следующему кадру,
+/// а на экран попадёт мусор
+struct CapturedFrame {
+    let texture: MTLTexture
+    private let cvTexture: CVMetalTexture
+    private let pixelBuffer: CVPixelBuffer
+
+    init(texture: MTLTexture, cvTexture: CVMetalTexture, pixelBuffer: CVPixelBuffer) {
+        self.texture = texture
+        self.cvTexture = cvTexture
+        self.pixelBuffer = pixelBuffer
+    }
+}
+
 /// бэкенд уровня 3: захват экрана в текстуру Metal без копирования на CPU
 final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate {
     private let device: MTLDevice
-    private let onFrame: (MTLTexture) -> Void
+    private let onFrame: (CapturedFrame) -> Void
     private let onStop: (Error) -> Void
 
     private var stream: SCStream?
     private var textureCache: CVMetalTextureCache?
     private let sampleQueue = DispatchQueue(label: "dev.senya.ScreenFilter.capture")
 
-    init(device: MTLDevice, onFrame: @escaping (MTLTexture) -> Void, onStop: @escaping (Error) -> Void) {
+    init(
+        device: MTLDevice,
+        onFrame: @escaping (CapturedFrame) -> Void,
+        onStop: @escaping (Error) -> Void
+    ) {
         self.device = device
         self.onFrame = onFrame
         self.onStop = onStop
@@ -121,7 +141,8 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate {
     ) {
         guard type == .screen,
               let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer),
-              let cache = textureCache else { return }
+              let cache = textureCache,
+              isCompleteFrame(sampleBuffer) else { return }
 
         var cvTexture: CVMetalTexture?
         let status = CVMetalTextureCacheCreateTextureFromImage(
@@ -142,7 +163,19 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate {
             return
         }
 
-        onFrame(texture)
+        onFrame(CapturedFrame(texture: texture, cvTexture: cvTexture, pixelBuffer: pixelBuffer))
+    }
+
+    /// кадры со статусом idle или blank приходят без свежей картинки, рисовать их нельзя
+    private func isCompleteFrame(_ sampleBuffer: CMSampleBuffer) -> Bool {
+        guard let attachments = CMSampleBufferGetSampleAttachmentsArray(
+            sampleBuffer,
+            createIfNecessary: false
+        ) as? [[SCStreamFrameInfo: Any]],
+            let raw = attachments.first?[.status] as? Int else {
+            return true
+        }
+        return SCFrameStatus(rawValue: raw) == .complete
     }
 
     // MARK: - SCStreamDelegate
