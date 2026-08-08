@@ -1,7 +1,11 @@
 .DS_Store
 DerivedData/
 build/
+dist/
 
 # проект генерируется из project.yml командой xcodegen generate
 *.xcodeproj/
 *.xcworkspace/
+
+# локальные значения подписи этой машины, дефолты лежат в Signing.xcconfig
+Signing.local.xcconfig

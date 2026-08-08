@@ -1,0 +1,16 @@
+// подпись по умолчанию: автоматическая, без привязки к конкретной машине.
+// TCC привязывает разрешение Screen Recording к team id и bundle id, поэтому
+// собственный сертификат сохраняет выданное разрешение между пересборками,
+// а ad-hoc подпись теряет его каждый раз.
+//
+// свои значения клади в Signing.local.xcconfig, он не в git:
+//   CODE_SIGN_STYLE = Manual
+//   CODE_SIGN_IDENTITY = <SHA-1 сертификата из security find-identity -v -p codesigning>
+//   DEVELOPMENT_TEAM = <team id>
+
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+DEVELOPMENT_TEAM =
+PROVISIONING_PROFILE_SPECIFIER =
+
+#include? "Signing.local.xcconfig"
