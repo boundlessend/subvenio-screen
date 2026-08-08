@@ -2,17 +2,34 @@ import AppKit
 import Metal
 import QuartzCore
 
+enum RenderError: LocalizedError {
+    case metalUnavailable
+    case commandQueueUnavailable
+    case noDisplay
+
+    var errorDescription: String? {
+        switch self {
+        case .metalUnavailable:
+            return String(localized: "this machine has no Metal device")
+        case .commandQueueUnavailable:
+            return String(localized: "could not create a Metal command queue")
+        case .noDisplay:
+            return String(localized: "the selected display is not connected")
+        }
+    }
+}
+
 /// рисует кадр эффекта уровня 2: ничего не захватывает, только накладывает сверху
 final class OverlayRenderer {
     let device: MTLDevice
     private let queue: MTLCommandQueue
 
-    init() {
+    init() throws {
         guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Metal недоступен на этой машине")
+            throw RenderError.metalUnavailable
         }
         guard let queue = device.makeCommandQueue() else {
-            fatalError("не удалось создать MTLCommandQueue")
+            throw RenderError.commandQueueUnavailable
         }
         self.device = device
         self.queue = queue
@@ -21,7 +38,7 @@ final class OverlayRenderer {
     func draw(
         in layer: CAMetalLayer,
         pipeline: MTLRenderPipelineState,
-        uniforms: [Float],
+        uniforms: Uniforms,
         source: MTLTexture?
     ) {
         guard let drawable = layer.nextDrawable(),
@@ -35,11 +52,8 @@ final class OverlayRenderer {
 
         guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
         encoder.setRenderPipelineState(pipeline)
-        encoder.setFragmentBytes(
-            uniforms,
-            length: MemoryLayout<Float>.size * uniforms.count,
-            index: 0
-        )
+        var uniforms = uniforms
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 0)
         if let source {
             encoder.setFragmentTexture(source, index: 0)
         }
@@ -109,7 +123,7 @@ final class OverlayView: NSView {
         renderer.draw(
             in: layer,
             pipeline: pipeline,
-            uniforms: uniformValues(
+            uniforms: uniforms(
                 resolution: layer.drawableSize,
                 scale: scale,
                 time: time,
@@ -147,22 +161,117 @@ final class OverlayWindow: NSWindow {
     override var canBecomeMain: Bool { false }
 }
 
-/// показывает и убирает оверлей, компилирует шейдеры и гоняет анимацию
-final class OverlayController {
-    private let renderer = OverlayRenderer()
+/// то, чем был запущен захват: хранится, чтобы пережить смену разрешения и сон экрана
+private struct CaptureRequest: @unchecked Sendable {
+    let plugin: ShaderPlugin
+    let parameters: [Float]
+    let displayID: CGDirectDisplayID
+    let frame: CGRect
+    let showsCursor: Bool
+    let quality: CaptureQuality
+    let onStop: @Sendable (Error) -> Void
+
+    func with(frame: CGRect) -> CaptureRequest {
+        CaptureRequest(
+            plugin: plugin,
+            parameters: parameters,
+            displayID: displayID,
+            frame: frame,
+            showsCursor: showsCursor,
+            quality: quality,
+            onStop: onStop
+        )
+    }
+}
+
+/// то в дисплее, что задаётся при старте потока и не меняется на лету
+private struct DisplayProfile: Equatable {
+    let size: CGSize
+    let scale: CGFloat
+    let framesPerSecond: Int
+}
+
+/// собранный, но ещё не запущенный поток захвата вместе с параметрами дисплея
+private struct CaptureSetup {
+    let controller: CaptureController
+    let profile: DisplayProfile
+}
+
+/// доставляет кадры с очереди захвата на главный поток.
+/// отдельный тип, потому что колбэк ScreenCaptureKit приходит вне главного потока:
+/// `@unchecked Sendable` держится на том, что вью трогается только внутри main.async
+private final class FrameSink: @unchecked Sendable {
+    private weak var view: OverlayView?
+
+    init(view: OverlayView) {
+        self.view = view
+    }
+
+    func deliver(_ frame: CapturedFrame) {
+        // ponytail: без пропуска кадров. рисование одного треугольника дешевле
+        // кадра дисплея, начнёт отставать - появится флаг занятости.
+        // frame захватывается замыканием целиком: его буферы должны дожить до отрисовки
+        DispatchQueue.main.async {
+            self.view?.render(source: frame.texture)
+        }
+    }
+}
+
+/// показывает и убирает оверлей, компилирует шейдеры и гоняет анимацию.
+///
+/// потоковый контракт, он же причина `@unchecked Sendable`: весь класс работает
+/// только на главном потоке, извне его трогают либо оттуда же, либо через MainActor.run.
+/// пометить его `@MainActor` не выходит, пока цель macOS 13: доставка кадров с очереди
+/// захвата тогда требует `MainActor.assumeIsolated` из macOS 14, а замена на Task
+/// не гарантирует порядок кадров
+final class OverlayController: @unchecked Sendable {
+    /// ключ включает исходник: правка shader.metal на диске должна давать новый пайплайн,
+    /// иначе изменения не видно до перезапуска приложения
+    private struct PipelineKey: Hashable {
+        let identifier: String
+        let source: String
+    }
+
+    private var cachedRenderer: OverlayRenderer?
     private var window: OverlayWindow?
-    private var pipelines: [String: MTLRenderPipelineState] = [:]
+    private var pipelines: [PipelineKey: MTLRenderPipelineState] = [:]
     private var timer: Timer?
+    private var displayLink: AnyObject?
     private var startTime: CFTimeInterval = 0
     private var currentPlugin: ShaderPlugin?
     private var currentDisplayID: CGDirectDisplayID = CGMainDisplayID()
     private var capture: CaptureController?
+    private var captureRequest: CaptureRequest?
+    private var captureProfile: DisplayProfile?
+    /// экран спит или система уходит в сон: рисовать некуда, а батарею жалко
+    private var isPaused = false
 
     init() {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(screenParametersDidChange),
             name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+        let workspace = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.screensDidSleepNotification, NSWorkspace.willSleepNotification] {
+            workspace.addObserver(self, selector: #selector(pause), name: name, object: nil)
+        }
+        for name in [NSWorkspace.screensDidWakeNotification, NSWorkspace.didWakeNotification] {
+            workspace.addObserver(self, selector: #selector(resume), name: name, object: nil)
+        }
+        // системная настройка «уменьшать движение» касается нас напрямую: анимированные
+        // пресеты это мигание и шум на весь экран
+        workspace.addObserver(
+            self,
+            selector: #selector(reduceMotionDidChange),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(powerStateDidChange),
+            name: .NSProcessInfoPowerStateDidChange,
             object: nil
         )
     }
@@ -173,6 +282,7 @@ final class OverlayController {
         displayID: CGDirectDisplayID,
         frame: CGRect
     ) throws {
+        stopCapture()
         let view = try prepareWindow(
             for: plugin,
             parameters: parameters,
@@ -189,7 +299,7 @@ final class OverlayController {
               let target = screen(for: currentDisplayID) else { return }
         window.setFrame(frame, display: true)
         view.sourceRect = sourceRect(for: frame, on: target)
-        if timer == nil, capture == nil {
+        if !isTicking, capture == nil {
             view.render(source: nil)
         }
     }
@@ -199,7 +309,7 @@ final class OverlayController {
         guard let view = window?.contentView as? OverlayView else { return }
         view.parameters = values
         // анимированный пресет и захват перерисуются сами со следующим кадром
-        if timer == nil, capture == nil {
+        if !isTicking, capture == nil {
             view.render(source: nil)
         }
     }
@@ -212,50 +322,116 @@ final class OverlayController {
         displayID: CGDirectDisplayID,
         frame: CGRect,
         showsCursor: Bool,
-        onStop: @escaping (Error) -> Void
+        quality: CaptureQuality,
+        onStop: @escaping @Sendable (Error) -> Void
     ) async throws {
-        // async-функция без изоляции исполняется вне главного потока, а NSWindow и NSScreen
-        // допустимы только на нём
-        let (scale, framesPerSecond) = try await MainActor.run { () -> (CGFloat, Int) in
-            _ = try prepareWindow(
-                for: plugin,
-                parameters: parameters,
-                displayID: displayID,
-                frame: frame
-            )
-            let target = screen(for: displayID)
-            return (target?.backingScaleFactor ?? 2, target?.maximumFramesPerSecond ?? 60)
-        }
-
-        let capture = CaptureController(
-            device: renderer.device,
-            onFrame: { [weak self] frame in
-                // ponytail: без пропуска кадров. рисование одного треугольника дешевле
-                // кадра дисплея, начнёт отставать - появится флаг занятости.
-                // frame захватывается замыканием целиком: его буферы должны дожить до отрисовки
-                DispatchQueue.main.async {
-                    guard let view = self?.window?.contentView as? OverlayView else { return }
-                    view.render(source: frame.texture)
-                }
-            },
+        let request = CaptureRequest(
+            plugin: plugin,
+            parameters: parameters,
+            displayID: displayID,
+            frame: frame,
+            showsCursor: showsCursor,
+            quality: quality,
             onStop: onStop
         )
-        try await capture.start(
-            displayID: displayID,
-            scale: scale,
-            framesPerSecond: framesPerSecond,
-            showsCursor: showsCursor
-        )
-        self.capture = capture
+        // async-функция без изоляции исполняется вне главного потока, а окно, экран
+        // и состояние контроллера допустимы только на нём
+        let setup = try await MainActor.run { try prepareCapture(request) }
+        try await start(setup, for: request)
+        await MainActor.run {
+            capture = setup.controller
+            captureRequest = request
+            captureProfile = setup.profile
+        }
     }
 
     func hide() {
         setAnimating(false)
-        capture?.stop()
-        capture = nil
+        stopCapture()
+        captureRequest = nil
         window?.orderOut(nil)
         window = nil
         currentPlugin = nil
+    }
+
+    /// пресеты пропали с диска: их скомпилированные пайплайны больше не нужны
+    func forgetPipelines(keeping identifiers: Set<String>) {
+        pipelines = pipelines.filter { identifiers.contains($0.key.identifier) }
+    }
+
+    /// главный поток: поднимает окно под эффект и собирает поток захвата, но не стартует его
+    private func prepareCapture(_ request: CaptureRequest) throws -> CaptureSetup {
+        stopCapture()
+        let view = try prepareWindow(
+            for: request.plugin,
+            parameters: request.parameters,
+            displayID: request.displayID,
+            frame: request.frame
+        )
+        guard let profile = displayProfile(request.displayID) else {
+            throw RenderError.noDisplay
+        }
+        let sink = FrameSink(view: view)
+        let controller = try CaptureController(
+            device: try renderer().device,
+            onFrame: { sink.deliver($0) },
+            onStop: request.onStop
+        )
+        return CaptureSetup(controller: controller, profile: profile)
+    }
+
+    private func start(_ setup: CaptureSetup, for request: CaptureRequest) async throws {
+        try await setup.controller.start(
+            displayID: request.displayID,
+            scale: setup.profile.scale,
+            framesPerSecond: setup.profile.framesPerSecond,
+            showsCursor: request.showsCursor,
+            quality: request.quality
+        )
+    }
+
+    private func displayProfile(_ displayID: CGDirectDisplayID) -> DisplayProfile? {
+        guard let target = screen(for: displayID) else { return nil }
+        return DisplayProfile(
+            size: target.frame.size,
+            scale: target.backingScaleFactor,
+            framesPerSecond: target.maximumFramesPerSecond
+        )
+    }
+
+    private func stopCapture() {
+        capture?.stop()
+        capture = nil
+    }
+
+    /// перезапуск потока под новую геометрию или после сна: разрешение дисплея могло
+    /// смениться, а конфигурация SCStream задаётся один раз при старте
+    private func restartCapture() {
+        guard let captureRequest, !isPaused else { return }
+        let request = captureRequest.with(frame: window?.frame ?? captureRequest.frame)
+        Task {
+            do {
+                let setup = try await MainActor.run { try prepareCapture(request) }
+                try await start(setup, for: request)
+                await MainActor.run {
+                    capture = setup.controller
+                    self.captureRequest = request
+                    captureProfile = setup.profile
+                }
+            } catch {
+                Log.capture.error("could not restart capture: \(error.localizedDescription)")
+                await MainActor.run { request.onStop(error) }
+            }
+        }
+    }
+
+    private func renderer() throws -> OverlayRenderer {
+        if let cachedRenderer {
+            return cachedRenderer
+        }
+        let renderer = try OverlayRenderer()
+        cachedRenderer = renderer
+        return renderer
     }
 
     private func prepareWindow(
@@ -264,18 +440,19 @@ final class OverlayController {
         displayID: CGDirectDisplayID,
         frame: CGRect
     ) throws -> OverlayView {
+        let renderer = try renderer()
         let pipeline = try cachedPipeline(for: plugin)
         currentPlugin = plugin
         currentDisplayID = displayID
 
         guard let target = screen(for: displayID) else {
-            throw CaptureError.noDisplay
+            throw RenderError.noDisplay
         }
         let window = self.window ?? OverlayWindow(screen: target, renderer: renderer)
         window.setFrame(frame, display: true)
 
         guard let view = window.contentView as? OverlayView else {
-            fatalError("у оверлейного окна не тот contentView")
+            throw RenderError.metalUnavailable
         }
         view.pipeline = pipeline
         view.parameters = parameters
@@ -290,36 +467,115 @@ final class OverlayController {
     }
 
     private func cachedPipeline(for plugin: ShaderPlugin) throws -> MTLRenderPipelineState {
-        if let cached = pipelines[plugin.identifier] {
+        let source: String
+        switch plugin.kind {
+        case let .overlay(text), let .capture(text):
+            source = text
+        case .gamma:
+            throw PluginError.unsupportedLevel(plugin: plugin.manifest.name, level: .gammaLUT)
+        }
+
+        let key = PipelineKey(identifier: plugin.identifier, source: source)
+        if let cached = pipelines[key] {
             return cached
         }
-        let pipeline = try makePipeline(device: renderer.device, plugin: plugin)
-        pipelines[plugin.identifier] = pipeline
+        let pipeline = try makePipeline(device: try renderer().device, plugin: plugin)
+        // прежняя редакция того же плагина больше не нужна
+        pipelines = pipelines.filter { $0.key.identifier != plugin.identifier }
+        pipelines[key] = pipeline
         return pipeline
     }
 
-    // ponytail: обычный таймер вместо синхронизации с vsync. дрожание кадра на шуме
-    // и полосах незаметно, а CAMetalDisplayLink требует macOS 14 при цели 13
+    // MARK: - тики анимации
+
+    private var isTicking: Bool { timer != nil || displayLink != nil }
+
+    private var reduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    // ponytail: на macOS 13 остаётся таймер, CADisplayLink появился только в 14.
+    // дрожание кадра на шуме и полосах незаметно
     private func setAnimating(_ animating: Bool) {
+        stopTicking()
+        guard animating, !isPaused, !reduceMotion else { return }
+
+        // режим энергосбережения означает, что человек считает проценты батареи,
+        // а не кадры ретро-эффекта
+        let framesPerSecond: Float = ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
+        if #available(macOS 14.0, *), let view = window?.contentView {
+            let link = view.displayLink(target: self, selector: #selector(tick))
+            link.preferredFrameRateRange = CAFrameRateRange(
+                minimum: framesPerSecond / 2,
+                maximum: framesPerSecond,
+                preferred: framesPerSecond
+            )
+            link.add(to: .main, forMode: .common)
+            displayLink = link
+        } else {
+            let timer = Timer(timeInterval: 1 / Double(framesPerSecond), repeats: true) { [weak self] _ in
+                self?.tick()
+            }
+            // .common, иначе анимация встаёт на время открытого меню
+            RunLoop.main.add(timer, forMode: .common)
+            self.timer = timer
+        }
+    }
+
+    private func stopTicking() {
         timer?.invalidate()
         timer = nil
-        guard animating else { return }
-
-        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
-            guard let self, let view = self.window?.contentView as? OverlayView else { return }
-            view.time = CACurrentMediaTime() - self.startTime
-            view.render(source: nil)
+        if #available(macOS 14.0, *), let link = displayLink as? CADisplayLink {
+            link.invalidate()
         }
-        // .common, иначе анимация встаёт на время открытого меню
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
+        displayLink = nil
     }
+
+    @objc private func tick() {
+        guard let view = window?.contentView as? OverlayView else { return }
+        view.time = CACurrentMediaTime() - startTime
+        view.render(source: nil)
+    }
+
+    // MARK: - реакции на систему
 
     @objc private func screenParametersDidChange() {
         guard let window, let target = screen(for: currentDisplayID) else { return }
         // рамку окна под эффектом пересчитает трекер, здесь только полноэкранный случай
-        guard window.frame.size == target.frame.size else { return }
-        window.setFrame(target.frame, display: true)
-        (window.contentView as? OverlayView)?.render(source: nil)
+        if window.frame.size == target.frame.size {
+            window.setFrame(target.frame, display: true)
+            (window.contentView as? OverlayView)?.render(source: nil)
+        }
+        // нотификация приходит и на появление иконки в Dock, и на подключение мыши,
+        // а перезапуск потока нужен, только если сменилось то, что задано в его конфигурации
+        guard let captureRequest,
+              displayProfile(captureRequest.displayID) != captureProfile else { return }
+        restartCapture()
+    }
+
+    @objc private func pause() {
+        guard !isPaused, currentPlugin != nil else { return }
+        isPaused = true
+        stopTicking()
+        stopCapture()
+    }
+
+    @objc private func resume() {
+        guard isPaused else { return }
+        isPaused = false
+        setAnimating(currentPlugin?.isAnimated ?? false)
+        restartCapture()
+    }
+
+    @objc private func reduceMotionDidChange() {
+        setAnimating(currentPlugin?.isAnimated ?? false)
+    }
+
+    /// вошли или вышли из энергосбережения: частота задаётся при запуске и анимации,
+    /// и захвата, поэтому пересобираем оба
+    @objc private func powerStateDidChange() {
+        setAnimating(currentPlugin?.isAnimated ?? false)
+        guard captureRequest != nil else { return }
+        restartCapture()
     }
 }

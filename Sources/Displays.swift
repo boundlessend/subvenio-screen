@@ -17,10 +17,11 @@ func availableDisplays() -> [DisplayChoice] {
     NSScreen.screens.map { DisplayChoice(id: $0.displayID, name: $0.localizedName) }
 }
 
-/// экран по идентификатору, с откатом на главный: монитор могли отключить,
-/// пока приложение работало
+/// экран по идентификатору, nil если монитор отключили, пока приложение работало.
+/// без отката на главный: эффект должен лежать там, где его просили, а исчезновение
+/// дисплея это событие, о котором пользователю говорят, а не подменяют молча
 func screen(for displayID: CGDirectDisplayID) -> NSScreen? {
-    NSScreen.screens.first { $0.displayID == displayID } ?? NSScreen.screens.first
+    NSScreen.screens.first { $0.displayID == displayID }
 }
 
 /// доля кадра дисплея, которую занимает рамка: на весь экран это (0, 0, 1, 1).

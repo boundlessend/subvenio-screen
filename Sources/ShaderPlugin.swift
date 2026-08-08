@@ -50,21 +50,27 @@ struct ShaderPlugin {
     var defaultParameters: [Float] { (manifest.parameters ?? []).map(\.default) }
 }
 
-// ponytail: 8 параметров, потому что uniform-буфер фиксированной длины.
-// упирается кто-то в потолок, значит пора переходить на MTLBuffer переменной длины
-let maxShaderParameters = 8
-
 enum PluginError: LocalizedError {
+    case installFailed(underlying: Error)
     case manifestUnreadable(plugin: String, underlying: Error)
     case sourceMissing(plugin: String)
     case gammaSettingsMissing(plugin: String)
     case invalidGammaTint(plugin: String, count: Int)
     case unsupportedLevel(plugin: String, level: RenderLevel)
     case tooManyParameters(plugin: String, count: Int)
+    case invalidParameterName(plugin: String, name: String)
+    case invalidParameterRange(plugin: String, parameter: String)
+    case invalidParameterDefault(plugin: String, parameter: String)
+    case fragmentFunctionMissing(plugin: String)
     case compilationFailed(plugin: String, underlying: Error)
 
     var errorDescription: String? {
         switch self {
+        case let .installFailed(underlying):
+            return String(
+                format: String(localized: "bundled presets could not be installed - %@"),
+                underlying.localizedDescription
+            )
         case let .manifestUnreadable(plugin, underlying):
             return String(
                 format: String(localized: "%@: manifest is unreadable - %@"),
@@ -95,6 +101,26 @@ enum PluginError: LocalizedError {
                 format: String(localized: "%@: %lld parameters, the maximum is %lld"),
                 plugin, count, maxShaderParameters
             )
+        case let .invalidParameterName(plugin, name):
+            return String(
+                format: String(localized: "%@: \"%@\" is not a valid parameter name, letters, digits and _ only"),
+                plugin, name
+            )
+        case let .invalidParameterRange(plugin, parameter):
+            return String(
+                format: String(localized: "%@: parameter \"%@\" has min greater than or equal to max"),
+                plugin, parameter
+            )
+        case let .invalidParameterDefault(plugin, parameter):
+            return String(
+                format: String(localized: "%@: the default of parameter \"%@\" lies outside its range"),
+                plugin, parameter
+            )
+        case let .fragmentFunctionMissing(plugin):
+            return String(
+                format: String(localized: "%@: the shader declares no overlay_fragment function"),
+                plugin
+            )
         case let .compilationFailed(plugin, underlying):
             return String(
                 format: String(localized: "%@: shader does not compile - %@"),
@@ -105,12 +131,18 @@ enum PluginError: LocalizedError {
 
     var pluginName: String {
         switch self {
+        case .installFailed:
+            return String(localized: "Bundled presets")
         case let .manifestUnreadable(plugin, _),
              let .sourceMissing(plugin),
              let .gammaSettingsMissing(plugin),
              let .invalidGammaTint(plugin, _),
              let .unsupportedLevel(plugin, _),
              let .tooManyParameters(plugin, _),
+             let .invalidParameterName(plugin, _),
+             let .invalidParameterRange(plugin, _),
+             let .invalidParameterDefault(plugin, _),
+             let .fragmentFunctionMissing(plugin),
              let .compilationFailed(plugin, _):
             return plugin
         }
@@ -199,12 +231,39 @@ private func pluginKind(
         guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
             return .failure(.sourceMissing(plugin: manifest.name))
         }
-        let count = manifest.parameters?.count ?? 0
-        guard count <= maxShaderParameters else {
-            return .failure(.tooManyParameters(plugin: manifest.name, count: count))
+        let parameters = manifest.parameters ?? []
+        guard parameters.count <= maxShaderParameters else {
+            return .failure(.tooManyParameters(plugin: manifest.name, count: parameters.count))
+        }
+        if let error = validate(parameters, of: manifest.name) {
+            return .failure(error)
         }
         return .success(
             manifest.level == .overlay ? .overlay(source: source) : .capture(source: source)
         )
     }
+}
+
+/// манифест пишет человек, поэтому это граница доверия: имя уходит в #define шейдера,
+/// а границы уходят в диапазон слайдера, который падает при min больше max
+private func validate(_ parameters: [ShaderParameter], of plugin: String) -> PluginError? {
+    for parameter in parameters {
+        guard isIdentifier(parameter.name) else {
+            return .invalidParameterName(plugin: plugin, name: parameter.name)
+        }
+        guard parameter.min < parameter.max else {
+            return .invalidParameterRange(plugin: plugin, parameter: parameter.name)
+        }
+        guard (parameter.min...parameter.max).contains(parameter.default) else {
+            return .invalidParameterDefault(plugin: plugin, parameter: parameter.name)
+        }
+    }
+    return nil
+}
+
+/// идентификатор C: буквы ASCII, цифры и подчёркивание, первый символ не цифра
+private func isIdentifier(_ name: String) -> Bool {
+    let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+    guard let first = name.first, !first.isNumber else { return false }
+    return name.allSatisfy(allowed.contains)
 }

@@ -1,4 +1,22 @@
 import Metal
+import simd
+
+// ponytail: 8 параметров, потому что uniform-буфер фиксированной длины.
+// упирается кто-то в потолок, значит пора переходить на MTLBuffer переменной длины
+let maxShaderParameters = 8
+
+/// раскладка uniform-буфера на стороне Swift. поля и порядок обязаны совпадать
+/// со `struct Uniforms` в прологе ниже; совпадение проверяется рефлексией пайплайна
+/// при компиляции каждого шейдера, поэтому расхождение всплывает сразу, а не мусором на экране
+struct Uniforms {
+    var resolution: SIMD2<Float>
+    var scale: Float
+    var time: Float
+    /// какой кусок кадра дисплея показывает этот оверлей, в долях от кадра
+    var sourceOrigin: SIMD2<Float>
+    var sourceSize: SIMD2<Float>
+    var params: SIMD8<Float>
+}
 
 /// пролог, который движок подставляет перед исходником плагина:
 /// вершинная функция, uniform-структура и общие хелперы. плагин пишет только фрагментную функцию
@@ -65,43 +83,89 @@ func makePipeline(device: MTLDevice, plugin: ShaderPlugin) throws -> MTLRenderPi
     case let .overlay(text), let .capture(text):
         source = text
     case .gamma:
-        fatalError("makePipeline вызван для плагина уровня 1")
+        throw PluginError.unsupportedLevel(plugin: plugin.manifest.name, level: .gammaLUT)
     }
+
+    let library: MTLLibrary
     do {
-        let library = try device.makeLibrary(
+        library = try device.makeLibrary(
             source: shaderSource(for: plugin, source: source),
             options: nil
         )
-        let descriptor = MTLRenderPipelineDescriptor()
-        descriptor.vertexFunction = library.makeFunction(name: "overlay_vertex")
-        descriptor.fragmentFunction = library.makeFunction(name: "overlay_fragment")
-        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        return try device.makeRenderPipelineState(descriptor: descriptor)
+    } catch {
+        throw PluginError.compilationFailed(plugin: plugin.manifest.name, underlying: error)
+    }
+
+    guard let fragment = library.makeFunction(name: "overlay_fragment") else {
+        throw PluginError.fragmentFunctionMissing(plugin: plugin.manifest.name)
+    }
+
+    let descriptor = MTLRenderPipelineDescriptor()
+    descriptor.vertexFunction = library.makeFunction(name: "overlay_vertex")
+    descriptor.fragmentFunction = fragment
+    descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+
+    do {
+        var reflection: MTLRenderPipelineReflection?
+        let pipeline = try device.makeRenderPipelineState(
+            descriptor: descriptor,
+            options: [.bindingInfo],
+            reflection: &reflection
+        )
+        try checkUniformLayout(reflection)
+        return pipeline
+    } catch let error as PluginError {
+        throw error
     } catch {
         throw PluginError.compilationFailed(plugin: plugin.manifest.name, underlying: error)
     }
 }
 
-/// раскладка совпадает с struct Uniforms в прологе:
-/// float2 + float + float + float2 + float2 + float[8]
-func uniformValues(
+/// сверяет размер uniform-буфера, который ждёт шейдер, с тем, что шлёт Swift.
+/// ошибка здесь означает расхождение пролога и `struct Uniforms`, а не вину плагина
+private func checkUniformLayout(_ reflection: MTLRenderPipelineReflection?) throws {
+    guard let binding = reflection?.fragmentBindings.first(where: {
+        $0.index == 0 && $0.type == .buffer
+    }) as? MTLBufferBinding else {
+        return
+    }
+    let expected = MemoryLayout<Uniforms>.stride
+    guard binding.bufferDataSize == expected else {
+        throw UniformLayoutError.sizeMismatch(shader: binding.bufferDataSize, swift: expected)
+    }
+}
+
+enum UniformLayoutError: LocalizedError {
+    case sizeMismatch(shader: Int, swift: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case let .sizeMismatch(shader, swift):
+            return String(
+                format: String(localized: "uniform layout mismatch: the shader expects %lld bytes, the app sends %lld"),
+                shader, swift
+            )
+        }
+    }
+}
+
+func uniforms(
     resolution: CGSize,
     scale: CGFloat,
     time: Double,
     sourceRect: CGRect,
     parameters: [Float]
-) -> [Float] {
-    var values: [Float] = [
-        Float(resolution.width),
-        Float(resolution.height),
-        Float(scale),
-        Float(time),
-        Float(sourceRect.origin.x),
-        Float(sourceRect.origin.y),
-        Float(sourceRect.width),
-        Float(sourceRect.height),
-    ]
-    values.append(contentsOf: parameters)
-    values.append(contentsOf: [Float](repeating: 0, count: maxShaderParameters - parameters.count))
-    return values
+) -> Uniforms {
+    var params = SIMD8<Float>(repeating: 0)
+    for (index, value) in parameters.prefix(maxShaderParameters).enumerated() {
+        params[index] = value
+    }
+    return Uniforms(
+        resolution: SIMD2(Float(resolution.width), Float(resolution.height)),
+        scale: Float(scale),
+        time: Float(time),
+        sourceOrigin: SIMD2(Float(sourceRect.origin.x), Float(sourceRect.origin.y)),
+        sourceSize: SIMD2(Float(sourceRect.width), Float(sourceRect.height)),
+        params: params
+    )
 }
