@@ -18,6 +18,9 @@ enum GammaError: LocalizedError {
 /// поканальные таблицы для CGSetDisplayTransferByTable: вход это доля яркости,
 /// выход это она же после инверсии, гаммы, клиппинга и тинта
 func gammaTables(_ settings: GammaSettings, size: Int) -> (red: [Float], green: [Float], blue: [Float]) {
+    // таблица из одной записи означала бы деление на ноль ниже; такой дисплей нам не встречался,
+    // но емкость приходит из системы, а не из наших рук
+    let size = max(size, 2)
     func channel(tint: Float) -> [Float] {
         (0..<size).map { index in
             var value = Float(index) / Float(size - 1)
@@ -87,7 +90,7 @@ final class GammaController {
         do {
             try apply(active, displayID: activeDisplayID)
         } catch {
-            NSLog("не удалось переприменить гамму: \(error.localizedDescription)")
+            Log.gamma.error("could not reapply the gamma table: \(error.localizedDescription)")
         }
     }
 }
