@@ -11,6 +11,18 @@ if [ -z "$VERSION" ]; then
     echo "MARKETING_VERSION не найден в project.yml" >&2
     exit 1
 fi
+TAG="v$VERSION"
+
+# версия живёт в трёх местах: project.yml, тег и релиз на GitHub. проверка ловит
+# самый частый способ их развести - собрать образ, забыв поднять версию
+if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+    echo "тег $TAG уже существует: подними MARKETING_VERSION в project.yml" >&2
+    exit 1
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+    echo "внимание: рабочее дерево грязное, образ соберётся не из того, что в git" >&2
+fi
 
 if ! command -v create-dmg >/dev/null; then
     echo "нужен create-dmg: brew install create-dmg" >&2
@@ -39,3 +51,7 @@ rm -f "dist/Subvenio Screen $VERSION.dmg"
 create-dmg "$APP" dist
 
 echo "готово: dist/Subvenio Screen $VERSION.dmg"
+echo
+echo "дальше руками, когда образ проверен:"
+echo "  git tag -a $TAG -m \"Subvenio Screen $VERSION\" && git push origin $TAG"
+echo "  gh release create $TAG \"dist/Subvenio Screen $VERSION.dmg\" --notes-file <файл>"
