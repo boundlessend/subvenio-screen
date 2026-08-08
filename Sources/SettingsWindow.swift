@@ -250,7 +250,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 backing: .buffered,
                 defer: false
             )
-            window.title = String(localized: "ScreenFilter Settings")
+            window.title = String(localized: "Subvenire Screen Settings")
             window.contentView = NSHostingView(rootView: SettingsView(effects: effects))
             window.delegate = self
             window.isReleasedWhenClosed = false

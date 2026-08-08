@@ -1,4 +1,4 @@
-# ScreenFilter - architecture decisions
+# Subvenire Screen - architecture decisions
 
 Why the app is built the way it is. What it does and how to use it lives in
 [README.md](README.md); this file records the decisions and the reasoning behind
@@ -151,11 +151,7 @@ Level 3 has one non-obvious trap: `sharingType = .none` hides the overlay from
 
 Questions consciously postponed. Not forgotten, just not needed yet.
 
-1. **Project name.** `screen-filter` is a working title. Pick a real one before
-   opening the sources - it is baked into the bundle id, the log subsystem and
-   the container path, so renaming later costs the user their Screen Recording
-   grant and their shaders folder.
-2. **Independent presets per display.** One effect on one display today. Several
+1. **Independent presets per display.** One effect on one display today. Several
    at once means a window, a `CaptureController` and a display link per screen,
    which is also where displays with different scale and refresh rate stop being
    free: `CADisplayLink` already follows the screen its view is on, but each

@@ -149,10 +149,10 @@ enum PluginError: LocalizedError {
     }
 }
 
-/// ~/Library/Application Support/ScreenFilter/Shaders
+/// ~/Library/Application Support/SubvenireScreen/Shaders
 func shadersDirectory() -> URL {
     let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    return support.appendingPathComponent("ScreenFilter/Shaders", isDirectory: true)
+    return support.appendingPathComponent("SubvenireScreen/Shaders", isDirectory: true)
 }
 
 /// копирует встроенные пресеты, которых ещё нет на диске. существующие папки не трогает,

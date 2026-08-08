@@ -189,13 +189,13 @@
         }
       }
     },
-    "About ScreenFilter": {
+    "About Subvenire Screen": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "О ScreenFilter"
+            "value": "О Subvenire Screen"
           }
         }
       }
@@ -497,13 +497,13 @@
         }
       }
     },
-    "Open Privacy & Security → Screen Recording and enable ScreenFilter.": {
+    "Open Privacy & Security → Screen Recording and enable Subvenire Screen.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите ScreenFilter."
+            "value": "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите Subvenire Screen."
           }
         }
       }
@@ -629,13 +629,13 @@
         }
       }
     },
-    "ScreenFilter Settings": {
+    "Subvenire Screen Settings": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Настройки ScreenFilter"
+            "value": "Настройки Subvenire Screen"
           }
         }
       }

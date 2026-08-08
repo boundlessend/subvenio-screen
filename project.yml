@@ -1,4 +1,4 @@
-name: ScreenFilter
+name: SubvenireScreen
 options:
   bundleIdPrefix: dev.senya
   deploymentTarget:
@@ -20,7 +20,7 @@ packages:
     exactVersion: 2.4.0
 
 targets:
-  ScreenFilter:
+  SubvenireScreen:
     type: application
     platform: macOS
     dependencies:
@@ -39,16 +39,16 @@ targets:
       Release: Signing.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.senya.ScreenFilter
-        PRODUCT_NAME: ScreenFilter
-        MARKETING_VERSION: "1.0.1"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.senya.SubvenireScreen
+        PRODUCT_NAME: "Subvenire Screen"
+        MARKETING_VERSION: "1.1.0"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.0"
         # ловит гонки на границах, где уже расставлены акторы и Sendable,
         # не заваливая сборку шумом от AppKit
         SWIFT_STRICT_CONCURRENCY: targeted
         ENABLE_HARDENED_RUNTIME: YES
-        CODE_SIGN_ENTITLEMENTS: Resources/ScreenFilter.entitlements
+        CODE_SIGN_ENTITLEMENTS: Resources/SubvenireScreen.entitlements
         SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -56,7 +56,7 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         ARCHS: "$(ARCHS_STANDARD)"
 
-  ScreenFilterTests:
+  SubvenireScreenTests:
     type: bundle.unit-test
     platform: macOS
     # без TEST_HOST: тесты проверяют чистые преобразования, а поднятый хост
@@ -73,16 +73,16 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  ScreenFilter:
+  SubvenireScreen:
     build:
       targets:
-        ScreenFilter: all
-        ScreenFilterTests: [test]
+        SubvenireScreen: all
+        SubvenireScreenTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - ScreenFilterTests
+        - SubvenireScreenTests
     archive:
       config: Release

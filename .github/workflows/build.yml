@@ -21,8 +21,8 @@ jobs:
       - name: Build
         run: |
           xcodebuild build \
-            -project ScreenFilter.xcodeproj \
-            -scheme ScreenFilter \
+            -project SubvenireScreen.xcodeproj \
+            -scheme SubvenireScreen \
             -configuration Debug \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
@@ -30,8 +30,8 @@ jobs:
       - name: Test
         run: |
           xcodebuild test \
-            -project ScreenFilter.xcodeproj \
-            -scheme ScreenFilter \
+            -project SubvenireScreen.xcodeproj \
+            -scheme SubvenireScreen \
             -destination 'platform=macOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
