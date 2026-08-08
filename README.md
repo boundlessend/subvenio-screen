@@ -5,8 +5,8 @@ screen - scanlines, film grain, VHS, sepia, honest black and white - and
 toggles them with a global hotkey.
 
 Effects are plugins, not a fixed list: a shader is a folder with a manifest and
-a Metal fragment function, and it shows up in the menu without rebuilding the
-app.
+a Metal fragment function, and it shows up in the menu the moment you save it,
+without rebuilding the app.
 
 Working title. The repository is private for now.
 
@@ -36,42 +36,60 @@ Two consequences worth knowing:
 
 ## Features
 
-- Menu bar app, no Dock icon, state restored between launches.
+- Menu bar app, no Dock icon, state restored between launches. Left click
+  toggles the effect, right click (or control click) opens the menu.
 - Global hotkey via Carbon, so no Accessibility permission is required.
-- Shader plugins loaded from disk, with runtime Metal compilation and readable
-  errors for broken ones.
+- Shader plugins loaded from disk and watched with FSEvents: save a file and the
+  list updates itself. Broken plugins show up with the actual error text.
 - Settings window: preset list, per-preset parameter sliders that reach the
-  running effect live, display picker, hotkey recorder, launch at login.
+  running effect live, capture size and frame rate limits, display picker,
+  hotkey recorder, launch at login.
 - Window-scoped mode: the effect follows one window as it moves and resizes.
+- Problems are reported in the menu bar, not by stealing focus with a modal
+  dialog. The icon changes and the menu carries the detail.
+- Animation pauses when the screen sleeps, and respects the system
+  "reduce motion" setting.
 - English and Russian interface.
 
 ## Requirements
 
 - macOS 13.0 or later
+- Apple Silicon. The binary is built for both architectures, but only Apple
+  Silicon has actually been tested; see [PLAN.md](PLAN.md) on Intel.
 - Xcode 16 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
   (`brew install xcodegen`)
 
 ## Build
 
-The Xcode project is generated and not tracked in git.
+The Xcode project is generated from `project.yml` and is not tracked in git.
 
 ```sh
-xcodegen generate
-xcodebuild -project ScreenFilter.xcodeproj -scheme ScreenFilter \
-  -configuration Debug -derivedDataPath build build
-open build/Build/Products/Debug/ScreenFilter.app
+make run      # generate, build, launch
+make test     # unit tests for the pure parts
+make release  # signed Release build zipped into dist/
 ```
 
-Signing uses a local Apple Development certificate. TCC binds the Screen
-Recording grant to team id plus bundle id, so a real signature keeps the
-permission across rebuilds where an ad-hoc one would lose it on every build.
-Change `CODE_SIGN_IDENTITY` and `DEVELOPMENT_TEAM` in `project.yml` to your own.
+Signing defaults to automatic and needs nothing from you. TCC binds the Screen
+Recording grant to team id plus bundle id, so a stable signature keeps the
+permission across rebuilds where an ad-hoc one would lose it every time. To pin
+your own certificate, create `Signing.local.xcconfig` (git-ignored):
+
+```
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = <SHA-1 from security find-identity -v -p codesigning>
+DEVELOPMENT_TEAM = <your team id>
+```
+
+Builds are not notarised, which is a deliberate choice for a personal tool: on
+another machine Gatekeeper will ask for a manual confirmation in
+Privacy & Security.
 
 ## Writing a shader
 
 Plugins live in `~/Library/Application Support/ScreenFilter/Shaders/`. Bundled
 presets are copied there on first launch, folder by folder, and existing folders
-are never overwritten - delete a folder to get the bundled version back.
+are never overwritten - delete a folder to get the bundled version back. The
+folder is watched, so a new or edited plugin is picked up without a restart.
 
 A plugin is a folder with `manifest.json` and, for levels 2 and 3,
 `shader.metal`:
@@ -86,6 +104,10 @@ A plugin is a folder with `manifest.json` and, for levels 2 and 3,
   ]
 }
 ```
+
+Parameter names must be plain identifiers, `min` must be below `max`, and the
+default must lie between them: the name becomes a shader macro and the range
+becomes a slider, so both are validated before anything is compiled.
 
 `shader.metal` holds only the fragment function. The engine prepends a prelude
 with the vertex function, the uniform struct and shared helpers, and turns
@@ -136,14 +158,16 @@ error text instead of being skipped silently.
 ## Permissions
 
 - **Screen Recording** is requested lazily, the first time a level 3 preset is
-  turned on, behind an explanation screen of the app's own. Refusing leaves
-  levels 1 and 2 fully working.
+  turned on by hand, behind an explanation screen of the app's own. Refusing
+  leaves levels 1 and 2 fully working. On autostart the app never asks: a
+  level 3 preset simply stays off until you turn it on yourself.
 - **Accessibility** is never requested. The global hotkey uses Carbon
   `RegisterEventHotKey`, and window tracking polls `CGWindowList` - one lookup
   by window id measures at 0.08 ms, which is 0.5% of a core at 60 Hz.
 
 Frames from screen capture only live in memory until they are drawn. Nothing is
-written to disk and nothing leaves the machine.
+written to disk and nothing leaves the machine, as `PrivacyInfo.xcprivacy`
+declares.
 
 ## Known limits
 
@@ -153,7 +177,9 @@ written to disk and nothing leaves the machine.
 - The overlay window uses `sharingType = .none`, so it is invisible to
   screenshots and to other apps' screen capture. That also closes half of the
   level 3 feedback loop.
-- Universal binary is a goal, but only Apple Silicon has actually been tested.
+- Level 3 always captures the whole display, even in window-scoped mode.
+  `SCStreamConfiguration.sourceRect` would fix that but needs macOS 14.
+- The app has no icon of its own yet.
 
 ## Layout
 
@@ -161,15 +187,19 @@ written to disk and nothing leaves the machine.
 Sources/            Swift, one file per concern
   AppDelegate       menu bar and window wiring
   EffectController  state, backend selection, persistence
-  Overlay           overlay window, Metal view, renderer
+  Overlay           overlay window, Metal view, renderer, capture lifecycle
   Gamma             level 1 backend
   Capture           level 3 backend
-  ShaderPlugin      manifest model and loader
-  ShaderPipeline    shader prelude and runtime compilation
+  ShaderPlugin      manifest model, validation and loader
+  ShaderPipeline    uniform layout, shader prelude, runtime compilation
+  PluginWatcher     FSEvents watch over the plugin folder
   WindowTracking    window-scoped mode
+  Logging           os.Logger categories
+Tests/              gamma tables, manifest validation, uniform layout
 Resources/Shaders/  bundled presets
+scripts/release.sh  Release build into dist/
 project.yml         XcodeGen project definition
+Signing.xcconfig    signing defaults, overridable locally
 ```
 
-Architecture decisions live in [PLAN.md](PLAN.md), the work breakdown in
-[PRD.md](PRD.md).
+Architecture decisions and the reasoning behind them live in [PLAN.md](PLAN.md).
