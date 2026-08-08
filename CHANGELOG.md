@@ -4,7 +4,7 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 each one ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
-## Unreleased
+## 1.4.0
 
 ### Added
 
