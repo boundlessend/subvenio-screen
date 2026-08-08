@@ -9,8 +9,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var statusItem: NSStatusItem?
     private let effects = EffectController()
+    private let updates = UpdateController()
     private let settings = SettingsWindowController()
     private var observers: Set<AnyCancellable> = []
+    private var updateTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -35,6 +37,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         effects.restoreFromDefaults()
         updateStatusIcon()
         showWelcomeOnFirstLaunch()
+        scheduleUpdateChecks()
+    }
+
+    /// проверка при запуске и раз в час: приложение живёт неделями, и без тика
+    /// недельный интервал наступал бы только при перезапуске
+    private func scheduleUpdateChecks() {
+        Task { await updates.checkIfDue() }
+        let timer = Timer(timeInterval: 3600, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                Task { await self.updates.checkIfDue() }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        updateTimer = timer
     }
 
     /// без этого после выхода экран остался бы перекрашенным
@@ -105,16 +122,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showAlert(title: String(localized: "Shader failed to load"), message: message)
     }
 
+    /// приложение ничего не скачивает и не ставит само: открывает страницу релиза
+    @objc private func openReleasePage() {
+        guard let release = updates.available else { return }
+        NSWorkspace.shared.open(release.url)
+    }
+
     @objc private func openSettings() {
         // на время открытого окна приложение становится обычным: появляется ⌘Tab
         // и собственное меню, иначе окно теряется за чужими
         NSApp.setActivationPolicy(.regular)
-        settings.show(effects: effects)
+        settings.show(effects: effects, updates: updates)
     }
 
+    /// стандартная панель берёт имя, версию и копирайт из Info.plist,
+    /// а credits это единственное место, куда влезает описание
     @objc private func showAbout() {
         activateApp()
-        NSApp.orderFrontStandardAboutPanel(nil)
+        let description = String(localized: """
+        Retro effects over everything on screen - scanlines, film grain, VHS, \
+        sepia and honest black and white - switched on and off with one hotkey.
+
+        Effects are folders with a Metal shader, so the list is yours to extend.
+        """)
+        let credits = NSAttributedString(
+            string: description,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                .foregroundColor: NSColor.secondaryLabelColor
+            ]
+        )
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 
     // MARK: - меню
@@ -179,6 +217,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
             item.target = self
             item.representedObject = error.localizedDescription
+            menu.addItem(item)
+        }
+
+        if let release = updates.available {
+            menu.addItem(.separator())
+            let item = NSMenuItem(
+                title: String(
+                    format: String(localized: "Version %@ is available"),
+                    release.version
+                ),
+                action: #selector(openReleasePage),
+                keyEquivalent: ""
+            )
+            item.target = self
             menu.addItem(item)
         }
 

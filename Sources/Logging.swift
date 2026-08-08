@@ -10,4 +10,5 @@ enum Log {
     static let gamma = Logger(subsystem: subsystem, category: "gamma")
     static let effects = Logger(subsystem: subsystem, category: "effects")
     static let overlay = Logger(subsystem: subsystem, category: "overlay")
+    static let updates = Logger(subsystem: subsystem, category: "updates")
 }

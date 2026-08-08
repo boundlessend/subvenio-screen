@@ -36,6 +36,10 @@ where you left it after a restart.
   dialog. Animated presets respect the system "Reduce Motion" setting.
 - **Your own effects.** Presets are folders with a Metal shader, not a fixed
   list. Drop one in and it shows up in the menu without restarting the app.
+- **Update check** against the GitHub releases page - weekly by default, or
+  daily, monthly or never, and there is a Check now button. The app never
+  downloads or installs anything by itself; it tells you a version is out and
+  opens the release page.
 - **English and Russian interface.** Launch at login is one checkbox.
 
 ## Install
@@ -57,7 +61,9 @@ once in Terminal:
 xattr -dr com.apple.quarantine "/Applications/Subvenio Screen.app"
 ```
 
-The app has no auto-update: a new version means a new disk image from Releases.
+The app checks the Releases page for a newer version - once a week unless you
+change it in settings - and tells you in its menu when one is out. Installing is
+still a manual step: a new version means a new disk image from Releases.
 
 ## The presets
 

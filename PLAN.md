@@ -85,6 +85,14 @@ white" with an explicit warning in the UI, never as the foundation.
    `create-dmg`, versioned by hand from 1.0.0 and tagged in git. No Sparkle: an
    update framework has to be maintained, signed and hosted, which is more work
    than downloading a new image once in a while.
+15. **Update check without an update framework.** One request to the GitHub
+    releases API, a version comparison, and a menu entry - the app never
+    downloads or installs anything, it opens the release page. The interval is a
+    setting (weekly by default), and the check also runs hourly on a timer
+    because an app that stays open for weeks would otherwise only ever check at
+    launch. A scheduled failure goes to the log and no further: waking someone up
+    over a network error nobody asked about is exactly what decision 11 forbids.
+    A manual check does show its error, because that one was asked for.
 10. **Load budget.** No fixed CPU/GPU percentage up front. The levers are
     exposed instead: capture buffer scale and a frame rate cap, both global
     settings rather than per-preset, because they describe the machine and not

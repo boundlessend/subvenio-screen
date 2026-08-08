@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var effects: EffectController
+    @ObservedObject var updates: UpdateController
     /// список окон живой и меняется постоянно, поэтому обновляется сам, пока секция видна
     @State private var windows: [TrackedWindow] = availableWindows()
     @State private var launchAtLogin = isLaunchAtLoginEnabled()
@@ -89,6 +90,10 @@ struct SettingsView: View {
                         set: { setLaunchAtLoginSafely($0) }
                     ))
 
+                    Divider()
+
+                    updateControls
+
                     if !effects.loadErrors.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Failed to load").font(.headline)
@@ -106,6 +111,46 @@ struct SettingsView: View {
         } else {
             Text("No presets available")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /// обновления идут через страницу релизов GitHub: приложение только сообщает
+    /// о новой версии и открывает браузер, ничего не скачивая само
+    @ViewBuilder
+    private var updateControls: some View {
+        Picker("Check for updates:", selection: $updates.interval) {
+            ForEach(UpdateInterval.allCases) { interval in
+                Text(interval.title).tag(interval)
+            }
+        }
+        .frame(maxWidth: 380)
+
+        HStack(spacing: 12) {
+            Button("Check now") {
+                Task { await updates.checkNow() }
+            }
+            .disabled(updates.isChecking)
+
+            if updates.isChecking {
+                ProgressView().controlSize(.small)
+            } else if let release = updates.available {
+                Button(String(format: String(localized: "Download %@"), release.version)) {
+                    NSWorkspace.shared.open(release.url)
+                }
+            }
+        }
+
+        if let error = updates.lastError {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.red)
+        } else if updates.available == nil, let last = updates.lastCheck {
+            Text(String(
+                format: String(localized: "Up to date. Last checked %@"),
+                last.formatted(date: .abbreviated, time: .shortened)
+            ))
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -242,7 +287,7 @@ struct SettingsView: View {
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
 
-    func show(effects: EffectController) {
+    func show(effects: EffectController, updates: UpdateController) {
         if window == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 720, height: 420),
@@ -251,7 +296,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                 defer: false
             )
             window.title = String(localized: "Subvenio Screen Settings")
-            window.contentView = NSHostingView(rootView: SettingsView(effects: effects))
+            window.contentView = NSHostingView(rootView: SettingsView(effects: effects, updates: updates))
             window.delegate = self
             window.isReleasedWhenClosed = false
             // размер и положение окна переживают перезапуск

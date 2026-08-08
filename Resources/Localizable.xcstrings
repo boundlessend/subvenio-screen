@@ -255,6 +255,28 @@
         }
       }
     },
+    "Check for updates:": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверять обновления:"
+          }
+        }
+      }
+    },
+    "Check now": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверить сейчас"
+          }
+        }
+      }
+    },
     "Continue": {
       "extractionState": "manual",
       "localizations": {
@@ -310,6 +332,17 @@
         }
       }
     },
+    "Download %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачать %@"
+          }
+        }
+      }
+    },
     "Effect failed to start": {
       "extractionState": "manual",
       "localizations": {
@@ -343,6 +376,39 @@
         }
       }
     },
+    "Every day": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый день"
+          }
+        }
+      }
+    },
+    "Every month": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждый месяц"
+          }
+        }
+      }
+    },
+    "Every week": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Каждую неделю"
+          }
+        }
+      }
+    },
     "Failed to load": {
       "extractionState": "manual",
       "localizations": {
@@ -361,6 +427,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Полное разрешение"
+          }
+        }
+      }
+    },
+    "GitHub answered with something that is not a release": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub ответил чем-то, что не похоже на релиз"
+          }
+        }
+      }
+    },
+    "GitHub answered with status %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub ответил статусом %lld"
+          }
+        }
+      }
+    },
+    "GitHub has no public releases for this app yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У этого приложения пока нет публичных релизов на GitHub"
           }
         }
       }
@@ -438,6 +537,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Уровень 3: читает изображение экрана. Требует разрешения Screen Recording."
+          }
+        }
+      }
+    },
+    "Never": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Никогда"
           }
         }
       }
@@ -596,6 +706,17 @@
         }
       }
     },
+    "Retro effects over everything on screen - scanlines, film grain, VHS, sepia and honest black and white - switched on and off with one hotkey.\n\nEffects are folders with a Metal shader, so the list is yours to extend.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ретро-эффекты поверх всего на экране - строчная развёртка, зерно плёнки, VHS, сепия и честное чёрно-белое - включаются и выключаются одной комбинацией клавиш.\n\nЭффект это папка с шейдером на Metal, так что список можно пополнять своими."
+          }
+        }
+      }
+    },
     "Screen capture failed to start": {
       "extractionState": "manual",
       "localizations": {
@@ -629,17 +750,6 @@
         }
       }
     },
-    "Subvenio Screen Settings": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Настройки Subvenio Screen"
-          }
-        }
-      }
-    },
     "Settings…": {
       "extractionState": "manual",
       "localizations": {
@@ -658,6 +768,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Шейдер не загрузился"
+          }
+        }
+      }
+    },
+    "Subvenio Screen Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки Subvenio Screen"
           }
         }
       }
@@ -768,6 +889,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Включить эффект"
+          }
+        }
+      }
+    },
+    "Up to date. Last checked %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлена последняя версия. Проверено %@"
+          }
+        }
+      }
+    },
+    "Version %@ is available": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступна версия %@"
           }
         }
       }

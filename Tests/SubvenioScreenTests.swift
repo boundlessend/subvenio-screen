@@ -149,3 +149,24 @@ final class UniformLayoutTests: XCTestCase {
         XCTAssertEqual(values.resolution.x, 100)
     }
 }
+
+final class VersionComparisonTests: XCTestCase {
+    func testTagPrefixAndOrderOfComponents() {
+        XCTAssertTrue(isVersion("v1.2.0", newerThan: "1.1.9"))
+        XCTAssertTrue(isVersion("1.1.1", newerThan: "1.1.0"))
+        XCTAssertFalse(isVersion("v1.1.0", newerThan: "1.1.0"))
+        XCTAssertFalse(isVersion("1.0.9", newerThan: "1.1.0"))
+    }
+
+    /// строковое сравнение поставило бы 1.9 выше 1.10, и обновление не нашлось бы
+    func testDoubleDigitComponents() {
+        XCTAssertTrue(isVersion("1.10.0", newerThan: "1.9.0"))
+        XCTAssertFalse(isVersion("1.9.0", newerThan: "1.10.0"))
+    }
+
+    func testMissingAndDecoratedComponents() {
+        XCTAssertTrue(isVersion("2", newerThan: "1.9.9"))
+        XCTAssertFalse(isVersion("1.1", newerThan: "1.1.0"))
+        XCTAssertTrue(isVersion("1.2.0-beta", newerThan: "1.1.0"))
+    }
+}
