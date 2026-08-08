@@ -41,15 +41,21 @@ private func parameterDefines(_ parameters: [ShaderParameter]) -> String {
         .joined()
 }
 
-func shaderSource(for plugin: ShaderPlugin) -> String {
-    shaderPrelude + parameterDefines(plugin.manifest.parameters) + "\n" + plugin.source
+func shaderSource(for plugin: ShaderPlugin, source: String) -> String {
+    shaderPrelude + parameterDefines(plugin.manifest.parameters ?? []) + "\n" + source
 }
 
 // ponytail: компиляция занимает сотни миллисекунд и результат живёт в памяти до выхода.
 // дисковый кеш через MTLBinaryArchive появится, когда пресетов станет много или старт станет заметным
 func makePipeline(device: MTLDevice, plugin: ShaderPlugin) throws -> MTLRenderPipelineState {
+    guard case let .overlay(source) = plugin.kind else {
+        fatalError("makePipeline вызван для плагина уровня \(plugin.manifest.level.rawValue)")
+    }
     do {
-        let library = try device.makeLibrary(source: shaderSource(for: plugin), options: nil)
+        let library = try device.makeLibrary(
+            source: shaderSource(for: plugin, source: source),
+            options: nil
+        )
         let descriptor = MTLRenderPipelineDescriptor()
         descriptor.vertexFunction = library.makeFunction(name: "overlay_vertex")
         descriptor.fragmentFunction = library.makeFunction(name: "overlay_fragment")

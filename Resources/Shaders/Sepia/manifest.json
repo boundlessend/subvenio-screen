@@ -1,0 +1,11 @@
+{
+  "name": "Сепия",
+  "level": 1,
+  "gamma": {
+    "tint": [1.0, 0.88, 0.72],
+    "gamma": 1.0,
+    "invert": false,
+    "blackPoint": 0.04,
+    "whitePoint": 0.96
+  }
+}

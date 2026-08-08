@@ -1,0 +1,11 @@
+{
+  "name": "Инверсия",
+  "level": 1,
+  "gamma": {
+    "tint": [1.0, 1.0, 1.0],
+    "gamma": 1.0,
+    "invert": true,
+    "blackPoint": 0.0,
+    "whitePoint": 1.0
+  }
+}

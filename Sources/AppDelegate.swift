@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private var hotKey: GlobalHotKey?
     private let overlay = OverlayController()
+    private let gamma = GammaController()
 
     private var plugins: [ShaderPlugin] = []
     private var loadErrors: [PluginError] = []
@@ -70,17 +71,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         do {
-            try overlay.show(plugin: plugin)
+            // уровень плагина выбирает бэкенд, активным остаётся ровно один
+            switch plugin.kind {
+            case let .gamma(settings):
+                overlay.hide()
+                try gamma.activate(settings)
+            case .overlay:
+                gamma.deactivate()
+                try overlay.show(plugin: plugin)
+            }
             setEnabled(true)
         } catch {
-            setEnabled(false)
-            showAlert(title: "Шейдер не запустился", message: error.localizedDescription)
+            disableEffect()
+            showAlert(title: "Эффект не запустился", message: error.localizedDescription)
         }
     }
 
     private func disableEffect() {
         overlay.hide()
+        gamma.deactivate()
         setEnabled(false)
+    }
+
+    /// без этого после выхода экран остался бы перекрашенным
+    func applicationWillTerminate(_ notification: Notification) {
+        gamma.deactivate()
     }
 
     private func setEnabled(_ enabled: Bool) {

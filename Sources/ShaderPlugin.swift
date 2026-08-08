@@ -14,21 +14,39 @@ struct ShaderParameter: Decodable {
     let `default`: Float
 }
 
+/// поканальное преобразование для уровня 1: смешивать каналы гамма-таблица не умеет,
+/// поэтому здесь только тинт, гамма, инверсия и клиппинг
+struct GammaSettings: Decodable {
+    let tint: [Float]
+    let gamma: Float
+    let invert: Bool
+    let blackPoint: Float
+    let whitePoint: Float
+}
+
 struct ShaderManifest: Decodable {
     let name: String
     let level: RenderLevel
     let animated: Bool?
-    let parameters: [ShaderParameter]
+    let parameters: [ShaderParameter]?
+    let gamma: GammaSettings?
+}
+
+/// уровень 1 работает без шейдера, уровень 2 без гамма-таблиц: разные наборы данных,
+/// поэтому не опциональные поля, а два случая
+enum PluginKind {
+    case gamma(GammaSettings)
+    case overlay(source: String)
 }
 
 struct ShaderPlugin {
     let manifest: ShaderManifest
-    let source: String
+    let kind: PluginKind
     /// имя папки, используется как стабильный идентификатор в UserDefaults
     let identifier: String
 
     var isAnimated: Bool { manifest.animated ?? false }
-    var defaultParameters: [Float] { manifest.parameters.map(\.default) }
+    var defaultParameters: [Float] { (manifest.parameters ?? []).map(\.default) }
 }
 
 // ponytail: 8 параметров, потому что uniform-буфер фиксированной длины.
@@ -38,6 +56,8 @@ let maxShaderParameters = 8
 enum PluginError: LocalizedError {
     case manifestUnreadable(plugin: String, underlying: Error)
     case sourceMissing(plugin: String)
+    case gammaSettingsMissing(plugin: String)
+    case invalidGammaTint(plugin: String, count: Int)
     case unsupportedLevel(plugin: String, level: RenderLevel)
     case tooManyParameters(plugin: String, count: Int)
     case compilationFailed(plugin: String, underlying: Error)
@@ -48,6 +68,10 @@ enum PluginError: LocalizedError {
             return "\(plugin): манифест не читается - \(underlying.localizedDescription)"
         case let .sourceMissing(plugin):
             return "\(plugin): рядом с манифестом нет файла shader.metal"
+        case let .gammaSettingsMissing(plugin):
+            return "\(plugin): уровню 1 нужна секция gamma в манифесте"
+        case let .invalidGammaTint(plugin, count):
+            return "\(plugin): в tint должно быть 3 значения, а не \(count)"
         case let .unsupportedLevel(plugin, level):
             return "\(plugin): уровень рендеринга \(level.rawValue) ещё не поддерживается"
         case let .tooManyParameters(plugin, count):
@@ -61,6 +85,8 @@ enum PluginError: LocalizedError {
         switch self {
         case let .manifestUnreadable(plugin, _),
              let .sourceMissing(plugin),
+             let .gammaSettingsMissing(plugin),
+             let .invalidGammaTint(plugin, _),
              let .unsupportedLevel(plugin, _),
              let .tooManyParameters(plugin, _),
              let .compilationFailed(plugin, _):
@@ -75,18 +101,25 @@ func shadersDirectory() -> URL {
     return support.appendingPathComponent("ScreenFilter/Shaders", isDirectory: true)
 }
 
-/// копирует встроенные пресеты при первом запуске: если папка уже есть, её не трогаем,
-/// иначе правки пользователя затирались бы при каждом старте
+/// копирует встроенные пресеты, которых ещё нет на диске. существующие папки не трогает,
+/// иначе правки пользователя затирались бы при каждом старте, но новые пресеты
+/// из обновления приложения доезжают
 func installBundledPlugins(into directory: URL, from bundle: Bundle = .main) throws {
-    guard !FileManager.default.fileExists(atPath: directory.path) else { return }
     guard let bundled = bundle.url(forResource: "Shaders", withExtension: nil) else {
         throw CocoaError(.fileNoSuchFile)
     }
-    try FileManager.default.createDirectory(
-        at: directory.deletingLastPathComponent(),
-        withIntermediateDirectories: true
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+    let entries = try FileManager.default.contentsOfDirectory(
+        at: bundled,
+        includingPropertiesForKeys: nil,
+        options: [.skipsHiddenFiles]
     )
-    try FileManager.default.copyItem(at: bundled, to: directory)
+    for entry in entries {
+        let destination = directory.appendingPathComponent(entry.lastPathComponent)
+        guard !FileManager.default.fileExists(atPath: destination.path) else { continue }
+        try FileManager.default.copyItem(at: entry, to: destination)
+    }
 }
 
 /// сканирует папку с плагинами; битые плагины возвращаются ошибками, а не выбрасываются молча
@@ -101,7 +134,6 @@ func loadPlugins(from directory: URL) -> (plugins: [ShaderPlugin], errors: [Plug
     var errors: [PluginError] = []
 
     for entry in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
-        let name = entry.lastPathComponent
         let manifestURL = entry.appendingPathComponent("manifest.json")
         guard FileManager.default.fileExists(atPath: manifestURL.path) else { continue }
 
@@ -110,24 +142,48 @@ func loadPlugins(from directory: URL) -> (plugins: [ShaderPlugin], errors: [Plug
                 ShaderManifest.self,
                 from: Data(contentsOf: manifestURL)
             )
-            let sourceURL = entry.appendingPathComponent("shader.metal")
-            guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
-                errors.append(.sourceMissing(plugin: manifest.name))
-                continue
+            switch pluginKind(manifest: manifest, directory: entry) {
+            case let .success(kind):
+                plugins.append(
+                    ShaderPlugin(manifest: manifest, kind: kind, identifier: entry.lastPathComponent)
+                )
+            case let .failure(error):
+                errors.append(error)
             }
-            guard manifest.level == .overlay else {
-                errors.append(.unsupportedLevel(plugin: manifest.name, level: manifest.level))
-                continue
-            }
-            guard manifest.parameters.count <= maxShaderParameters else {
-                errors.append(.tooManyParameters(plugin: manifest.name, count: manifest.parameters.count))
-                continue
-            }
-            plugins.append(ShaderPlugin(manifest: manifest, source: source, identifier: name))
         } catch {
-            errors.append(.manifestUnreadable(plugin: name, underlying: error))
+            errors.append(.manifestUnreadable(plugin: entry.lastPathComponent, underlying: error))
         }
     }
 
     return (plugins, errors)
+}
+
+private func pluginKind(
+    manifest: ShaderManifest,
+    directory: URL
+) -> Result<PluginKind, PluginError> {
+    switch manifest.level {
+    case .gammaLUT:
+        guard let gamma = manifest.gamma else {
+            return .failure(.gammaSettingsMissing(plugin: manifest.name))
+        }
+        guard gamma.tint.count == 3 else {
+            return .failure(.invalidGammaTint(plugin: manifest.name, count: gamma.tint.count))
+        }
+        return .success(.gamma(gamma))
+
+    case .overlay:
+        let sourceURL = directory.appendingPathComponent("shader.metal")
+        guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
+            return .failure(.sourceMissing(plugin: manifest.name))
+        }
+        let count = manifest.parameters?.count ?? 0
+        guard count <= maxShaderParameters else {
+            return .failure(.tooManyParameters(plugin: manifest.name, count: count))
+        }
+        return .success(.overlay(source: source))
+
+    case .capture:
+        return .failure(.unsupportedLevel(plugin: manifest.name, level: manifest.level))
+    }
 }
