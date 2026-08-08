@@ -114,6 +114,9 @@ final class OverlayController {
     private var capture: CaptureController?
     private var captureRequest: CaptureRequest?
     private var captureProfile: DisplayProfile?
+    /// номер поколения захвата: старт уровня 3 асинхронный, и пока он идёт, эффект могли
+    /// выключить или перезапустить. поток, приехавший с чужим номером, уже никому не нужен
+    private var captureGeneration = 0
     /// экран спит или система уходит в сон: рисовать некуда, а батарею жалко
     private var isPaused = false
 
@@ -207,7 +210,13 @@ final class OverlayController {
             onStop: onStop
         )
         let setup = try prepareCapture(request)
+        let generation = captureGeneration
         try await start(setup, for: request)
+        guard generation == captureGeneration else {
+            Log.capture.info("capture start dropped: the effect changed while it was starting")
+            setup.controller.stop()
+            return
+        }
         capture = setup.controller
         captureRequest = request
         captureProfile = setup.profile
@@ -268,6 +277,8 @@ final class OverlayController {
     }
 
     private func stopCapture() {
+        // старт, который сейчас идёт, доедет уже с прежним номером и остановит себя сам
+        captureGeneration += 1
         capture?.stop()
         capture = nil
     }
@@ -280,7 +291,12 @@ final class OverlayController {
         Task {
             do {
                 let setup = try prepareCapture(request)
+                let generation = captureGeneration
                 try await start(setup, for: request)
+                guard generation == captureGeneration else {
+                    setup.controller.stop()
+                    return
+                }
                 capture = setup.controller
                 self.captureRequest = request
                 captureProfile = setup.profile

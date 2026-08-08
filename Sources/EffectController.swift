@@ -87,6 +87,9 @@ final class EffectController: ObservableObject {
     private var watcher: PluginWatcher?
     /// запуск уровня 3 асинхронный: без этого второй хоткей поднимает второй поток захвата
     private var isStarting = false
+    /// номер поколения включения: пока асинхронный старт уровня 3 идёт, эффект могли
+    /// выключить. состояние «включено» с чужим номером означало бы работу без окна
+    private var enableGeneration = 0
 
     init() {
         let defaults = UserDefaults.standard
@@ -137,7 +140,12 @@ final class EffectController: ObservableObject {
 
         let live = Set(plugins.map(\.identifier))
         overlay.forgetPipelines(keeping: live)
-        settings.forget(outside: live)
+        // настройки чистятся только по целиком прочитанной папке: пустой список или
+        // ошибка загрузки означают сбой чтения, а не удалённые пресеты, и уборка
+        // по такому списку стёрла бы значения ползунков у всех
+        if !plugins.isEmpty, loadErrors.isEmpty {
+            settings.forget(outside: live)
+        }
     }
 
     func parameters(for plugin: ShaderPlugin) -> [Float] {
@@ -215,6 +223,7 @@ final class EffectController: ObservableObject {
             return
         }
 
+        enableGeneration += 1
         tracker = nil
         guard let frame = targetFrame(for: plugin) else {
             disable()
@@ -251,6 +260,7 @@ final class EffectController: ObservableObject {
     }
 
     func disable() {
+        enableGeneration += 1
         tracker = nil
         overlay.hide()
         gamma.deactivate()
@@ -357,6 +367,7 @@ final class EffectController: ObservableObject {
             return
         }
         isStarting = true
+        let generation = enableGeneration
         Task { @MainActor in
             defer { isStarting = false }
             do {
@@ -375,9 +386,13 @@ final class EffectController: ObservableObject {
                         message: error.localizedDescription
                     )
                 }
+                // эффект выключили или переключили, пока поток поднимался: оверлей уже снят,
+                // и объявлять его включённым было бы враньём
+                guard generation == enableGeneration else { return }
                 startTrackingIfNeeded()
                 setEnabled(true)
             } catch {
+                guard generation == enableGeneration else { return }
                 disable()
                 report(
                     title: String(localized: "Screen capture failed to start"),

@@ -59,14 +59,21 @@ final class GammaController {
     }
 
     func activate(_ settings: GammaSettings, displayID: CGDirectDisplayID) throws {
+        // эффект переехал на другой монитор: на прежнем осталась бы наша таблица,
+        // и оба дисплея были бы перекрашены до выключения эффекта
+        if active != nil, activeDisplayID != displayID {
+            CGDisplayRestoreColorSyncSettings()
+        }
         try apply(settings, displayID: displayID)
         active = settings
         activeDisplayID = displayID
+        gammaIsActive = 1
     }
 
     func deactivate() {
         guard active != nil else { return }
         active = nil
+        gammaIsActive = 0
         CGDisplayRestoreColorSyncSettings()
     }
 
@@ -95,14 +102,22 @@ final class GammaController {
     }
 }
 
+/// читается из обработчика сигнала, поэтому не свойство контроллера, а атомарный флаг
+private nonisolated(unsafe) var gammaIsActive: sig_atomic_t = 0
+
 // ponytail: CGDisplayRestoreColorSyncSettings формально не async-signal-safe, но оставить
 // пользователю перекрашенный экран хуже, чем нарушить букву POSIX в обработчике сигнала.
 // SIGKILL не перехватывается вовсе, там гамму восстанавливает сам WindowServer
 private func installRestoreOnSignals() {
     for code in [SIGTERM, SIGINT, SIGHUP] {
-        signal(code) { _ in
-            CGDisplayRestoreColorSyncSettings()
-            _exit(1)
+        signal(code) { code in
+            // таблицу не трогали: восстанавливать нечего, и чужие настройки цвета целы
+            if gammaIsActive != 0 {
+                CGDisplayRestoreColorSyncSettings()
+            }
+            // дальше сигнал доигрывает штатно: код завершения остаётся тем, что послала система
+            signal(code, SIG_DFL)
+            raise(code)
         }
     }
 }
