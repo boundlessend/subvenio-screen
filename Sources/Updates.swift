@@ -34,9 +34,22 @@ struct AppRelease: Equatable, Sendable {
     let url: URL
 }
 
+/// неудача ручной проверки в том виде, в каком её показывают человеку
+struct UpdateFailure {
+    let message: String
+    let isMissingRelease: Bool
+}
+
 enum UpdateError: LocalizedError {
     case httpStatus(Int)
     case malformedPayload
+
+    /// репозиторий приватный или релизов в нём ещё нет: и то и другое GitHub отдаёт как 404.
+    /// это состояние, а не поломка, и краснеть в интерфейсе ему незачем
+    var isMissingRelease: Bool {
+        guard case let .httpStatus(code) = self else { return false }
+        return code == 404
+    }
 
     var errorDescription: String? {
         switch self {
@@ -117,12 +130,13 @@ func fetchLatestRelease() async throws -> AppRelease {
 final class UpdateController: ObservableObject {
     private static let intervalKey = "updates.interval"
     private static let lastCheckKey = "updates.lastCheck"
+    private static let lastAttemptKey = "updates.lastAttempt"
 
     @Published private(set) var available: AppRelease?
     @Published private(set) var lastCheck: Date?
     @Published private(set) var isChecking = false
-    /// текст последней неудачи, показывается только там, где проверку просили руками
-    @Published private(set) var lastError: String?
+    /// последняя неудача, показывается только там, где проверку просили руками
+    @Published private(set) var lastFailure: UpdateFailure?
 
     @Published var interval: UpdateInterval {
         didSet {
@@ -142,7 +156,14 @@ final class UpdateController: ObservableObject {
     /// потому что о сетевой ошибке фонового опроса пользователя будить незачем
     func checkIfDue() async {
         guard let period = interval.period else { return }
-        if let lastCheck, Date().timeIntervalSince(lastCheck) < period { return }
+        let now = Date()
+        if let lastCheck, now.timeIntervalSince(lastCheck) < period { return }
+        // отсчёт идёт и от попытки тоже: без этого недоступный GitHub, приватный
+        // репозиторий или отсутствие сети гнали бы запрос на каждом часовом тике
+        let attempted = UserDefaults.standard.double(forKey: Self.lastAttemptKey)
+        if attempted > 0, now.timeIntervalSince1970 - attempted < period { return }
+        UserDefaults.standard.set(now.timeIntervalSince1970, forKey: Self.lastAttemptKey)
+
         do {
             try await check()
         } catch {
@@ -155,14 +176,17 @@ final class UpdateController: ObservableObject {
         do {
             try await check()
         } catch {
-            lastError = error.localizedDescription
+            lastFailure = UpdateFailure(
+                message: error.localizedDescription,
+                isMissingRelease: (error as? UpdateError)?.isMissingRelease ?? false
+            )
         }
     }
 
     private func check() async throws {
         guard !isChecking else { return }
         isChecking = true
-        lastError = nil
+        lastFailure = nil
         defer { isChecking = false }
 
         let release = try await fetchLatestRelease()

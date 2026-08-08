@@ -187,10 +187,11 @@ struct SettingsView: View {
             }
             .animation(.spring(duration: 0.4), value: updates.available?.version)
 
-            if let error = updates.lastError {
-                Text(error)
+            if let failure = updates.lastFailure {
+                Text(failure.message)
                     .font(.callout)
-                    .foregroundStyle(.red)
+                    // отсутствие релизов это ответ, а не сбой: красным здесь пугать нечем
+                    .foregroundStyle(failure.isMissingRelease ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
             } else if updates.available == nil, let last = updates.lastCheck {
                 Text(String(
                     format: String(localized: "Up to date. Last checked %@"),
