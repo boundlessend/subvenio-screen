@@ -1,4 +1,4 @@
-# Subvenire Screen
+# Subvenio Screen
 
 A lightweight macOS menu bar app that lays visual effects over everything on
 screen - scanlines, film grain, VHS, sepia, honest black and white - and
@@ -18,7 +18,7 @@ affect the window's own content, and `NSVisualEffectView` does blur and vibrancy
 and nothing else. Without reading pixels you can draw **over** the screen, never
 **through** it.
 
-So Subvenire Screen has three rendering levels, and every plugin declares which one
+So Subvenio Screen has three rendering levels, and every plugin declares which one
 it needs.
 
 | Level | Mechanism | Can do | Cost | Permission |
@@ -81,7 +81,7 @@ DEVELOPMENT_TEAM = <your team id>
 
 ## Install
 
-`make release` produces `dist/Subvenire Screen <version>.dmg` (built with
+`make release` produces `dist/Subvenio Screen <version>.dmg` (built with
 [create-dmg](https://github.com/sindresorhus/create-dmg), `brew install
 create-dmg`). Open it and drag the app onto Applications.
 
@@ -95,7 +95,7 @@ Gatekeeper refuses to open an unnotarised app outright. Either right click the
 app and choose Open, confirm once in Privacy & Security, or clear the flag:
 
 ```sh
-xattr -d com.apple.quarantine "/Applications/Subvenire Screen.app"
+xattr -d com.apple.quarantine "/Applications/Subvenio Screen.app"
 ```
 
 Copying the image over AirDrop or a local network keeps the flag as well;
@@ -106,7 +106,7 @@ copying it with `scp` or `rsync` does not set it in the first place.
 Plugins live in the app's sandbox container:
 
 ```
-~/Library/Containers/dev.senya.SubvenireScreen/Data/Library/Application Support/SubvenireScreen/Shaders/
+~/Library/Containers/dev.senya.SubvenioScreen/Data/Library/Application Support/SubvenioScreen/Shaders/
 ```
 
 Nobody should have to type that, so settings has an "Open shaders folder"

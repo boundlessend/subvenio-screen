@@ -89,7 +89,7 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
     private let onStop: @MainActor @Sendable (Error) -> Void
 
     private var stream: SCStream?
-    private let sampleQueue = DispatchQueue(label: "dev.senya.SubvenireScreen.capture")
+    private let sampleQueue = DispatchQueue(label: "dev.senya.SubvenioScreen.capture")
 
     init(
         device: MTLDevice,

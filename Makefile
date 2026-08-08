@@ -1,7 +1,7 @@
 .PHONY: project build run test release clean
 
-PROJECT := SubvenireScreen.xcodeproj
-SCHEME := SubvenireScreen
+PROJECT := SubvenioScreen.xcodeproj
+SCHEME := SubvenioScreen
 
 project:
 	xcodegen generate
@@ -10,7 +10,7 @@ build: project
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug -derivedDataPath build build
 
 run: build
-	open build/Build/Products/Debug/Subvenire\ Screen.app
+	open build/Build/Products/Debug/Subvenio\ Screen.app
 
 test: project
 	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) -destination 'platform=macOS' -derivedDataPath build

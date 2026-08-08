@@ -189,13 +189,13 @@
         }
       }
     },
-    "About Subvenire Screen": {
+    "About Subvenio Screen": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "О Subvenire Screen"
+            "value": "О Subvenio Screen"
           }
         }
       }
@@ -497,13 +497,13 @@
         }
       }
     },
-    "Open Privacy & Security → Screen Recording and enable Subvenire Screen.": {
+    "Open Privacy & Security → Screen Recording and enable Subvenio Screen.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите Subvenire Screen."
+            "value": "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите Subvenio Screen."
           }
         }
       }
@@ -629,13 +629,13 @@
         }
       }
     },
-    "Subvenire Screen Settings": {
+    "Subvenio Screen Settings": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Настройки Subvenire Screen"
+            "value": "Настройки Subvenio Screen"
           }
         }
       }

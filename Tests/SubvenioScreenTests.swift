@@ -105,7 +105,7 @@ final class PluginLoadingTests: XCTestCase {
 
     private func makePlugin(manifest: String) throws -> URL {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("SubvenireScreenTests-\(UUID().uuidString)")
+            .appendingPathComponent("SubvenioScreenTests-\(UUID().uuidString)")
         let plugin = root.appendingPathComponent("Plugin")
         try FileManager.default.createDirectory(at: plugin, withIntermediateDirectories: true)
         addTeardownBlock { try? FileManager.default.removeItem(at: root) }

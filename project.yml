@@ -1,4 +1,4 @@
-name: SubvenireScreen
+name: SubvenioScreen
 options:
   bundleIdPrefix: dev.senya
   deploymentTarget:
@@ -20,7 +20,7 @@ packages:
     exactVersion: 2.4.0
 
 targets:
-  SubvenireScreen:
+  SubvenioScreen:
     type: application
     platform: macOS
     dependencies:
@@ -39,8 +39,8 @@ targets:
       Release: Signing.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.senya.SubvenireScreen
-        PRODUCT_NAME: "Subvenire Screen"
+        PRODUCT_BUNDLE_IDENTIFIER: dev.senya.SubvenioScreen
+        PRODUCT_NAME: "Subvenio Screen"
         MARKETING_VERSION: "1.1.0"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.0"
@@ -48,7 +48,7 @@ targets:
         # не заваливая сборку шумом от AppKit
         SWIFT_STRICT_CONCURRENCY: targeted
         ENABLE_HARDENED_RUNTIME: YES
-        CODE_SIGN_ENTITLEMENTS: Resources/SubvenireScreen.entitlements
+        CODE_SIGN_ENTITLEMENTS: Resources/SubvenioScreen.entitlements
         SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -56,7 +56,7 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         ARCHS: "$(ARCHS_STANDARD)"
 
-  SubvenireScreenTests:
+  SubvenioScreenTests:
     type: bundle.unit-test
     platform: macOS
     # без TEST_HOST: тесты проверяют чистые преобразования, а поднятый хост
@@ -73,16 +73,16 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  SubvenireScreen:
+  SubvenioScreen:
     build:
       targets:
-        SubvenireScreen: all
-        SubvenireScreenTests: [test]
+        SubvenioScreen: all
+        SubvenioScreenTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - SubvenireScreenTests
+        - SubvenioScreenTests
     archive:
       config: Release

@@ -483,7 +483,7 @@ private func ensureScreenRecordingAccess() -> Bool {
     activateApp()
     let denied = NSAlert()
     denied.messageText = String(localized: "Permission not granted")
-    denied.informativeText = String(localized: "Open Privacy & Security → Screen Recording and enable Subvenire Screen.")
+    denied.informativeText = String(localized: "Open Privacy & Security → Screen Recording and enable Subvenio Screen.")
     denied.addButton(withTitle: String(localized: "Open Settings"))
     denied.addButton(withTitle: String(localized: "Cancel"))
     if denied.runModal() == .alertFirstButtonReturn {

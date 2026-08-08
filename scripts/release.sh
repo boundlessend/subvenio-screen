@@ -18,13 +18,13 @@ if ! command -v create-dmg >/dev/null; then
 fi
 
 xcodegen generate
-xcodebuild -project SubvenireScreen.xcodeproj \
-    -scheme SubvenireScreen \
+xcodebuild -project SubvenioScreen.xcodeproj \
+    -scheme SubvenioScreen \
     -configuration Release \
     -derivedDataPath build \
     build
 
-APP="build/Build/Products/Release/Subvenire Screen.app"
+APP="build/Build/Products/Release/Subvenio Screen.app"
 if [ ! -d "$APP" ]; then
     echo "сборка не дала $APP" >&2
     exit 1
@@ -35,7 +35,7 @@ fi
 codesign --verify --strict "$APP"
 
 mkdir -p dist
-rm -f "dist/Subvenire Screen $VERSION.dmg"
+rm -f "dist/Subvenio Screen $VERSION.dmg"
 create-dmg "$APP" dist
 
-echo "готово: dist/Subvenire Screen $VERSION.dmg"
+echo "готово: dist/Subvenio Screen $VERSION.dmg"

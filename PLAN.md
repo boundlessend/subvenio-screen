@@ -1,4 +1,4 @@
-# Subvenire Screen - architecture decisions
+# Subvenio Screen - architecture decisions
 
 Why the app is built the way it is. What it does and how to use it lives in
 [README.md](README.md); this file records the decisions and the reasoning behind

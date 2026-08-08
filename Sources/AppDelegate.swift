@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // положение иконки в меню-баре переживает перезапуск
-        item.autosaveName = "SubvenireScreenStatusItem"
+        item.autosaveName = "SubvenioScreenStatusItem"
         // левый клик переключает эффект, правый открывает меню: самое частое действие
         // не должно стоить открытия меню
         item.button?.action = #selector(statusItemClicked)
@@ -53,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
         let name = effects.status == nil ? "tv" : "exclamationmark.triangle"
-        button.image = NSImage(systemSymbolName: name, accessibilityDescription: "Subvenire Screen")
+        button.image = NSImage(systemSymbolName: name, accessibilityDescription: "Subvenio Screen")
         button.appearsDisabled = !effects.isEnabled && effects.status == nil
         button.toolTip = effects.status?.title ?? effects.selectedPlugin?.manifest.name
     }
@@ -193,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(settingsItem)
 
         let about = NSMenuItem(
-            title: String(localized: "About Subvenire Screen"),
+            title: String(localized: "About Subvenio Screen"),
             action: #selector(showAbout),
             keyEquivalent: ""
         )
