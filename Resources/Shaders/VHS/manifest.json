@@ -1,0 +1,10 @@
+{
+  "name": "VHS",
+  "level": 2,
+  "animated": true,
+  "parameters": [
+    { "name": "tintStrength", "min": 0, "max": 1, "default": 0.16 },
+    { "name": "bandStrength", "min": 0, "max": 1, "default": 0.3 },
+    { "name": "noiseStrength", "min": 0, "max": 1, "default": 0.12 }
+  ]
+}

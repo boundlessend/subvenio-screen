@@ -1,0 +1,9 @@
+{
+  "name": "Плёночное зерно",
+  "level": 2,
+  "animated": true,
+  "parameters": [
+    { "name": "grainStrength", "min": 0, "max": 1, "default": 0.18 },
+    { "name": "vignetteStrength", "min": 0, "max": 1, "default": 0.45 }
+  ]
+}

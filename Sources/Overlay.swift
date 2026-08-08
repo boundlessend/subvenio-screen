@@ -1,11 +1,11 @@
 import AppKit
-import MetalKit
+import Metal
+import QuartzCore
 
-/// рисует статичный кадр эффекта уровня 2: ничего не захватывает, только накладывает сверху
+/// рисует кадр эффекта уровня 2: ничего не захватывает, только накладывает сверху
 final class OverlayRenderer {
     let device: MTLDevice
     private let queue: MTLCommandQueue
-    private let pipeline: MTLRenderPipelineState
 
     init() {
         guard let device = MTLCreateSystemDefaultDevice() else {
@@ -14,25 +14,11 @@ final class OverlayRenderer {
         guard let queue = device.makeCommandQueue() else {
             fatalError("не удалось создать MTLCommandQueue")
         }
-        guard let library = device.makeDefaultLibrary() else {
-            fatalError("в бандле нет default.metallib, шейдер не собран")
-        }
-
-        let descriptor = MTLRenderPipelineDescriptor()
-        descriptor.vertexFunction = library.makeFunction(name: "overlay_vertex")
-        descriptor.fragmentFunction = library.makeFunction(name: "overlay_fragment")
-        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-
-        do {
-            self.pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
-        } catch {
-            fatalError("не удалось собрать пайплайн оверлея: \(error)")
-        }
         self.device = device
         self.queue = queue
     }
 
-    func draw(in layer: CAMetalLayer, scale: CGFloat) {
+    func draw(in layer: CAMetalLayer, pipeline: MTLRenderPipelineState, uniforms: [Float]) {
         guard let drawable = layer.nextDrawable(),
               let buffer = queue.makeCommandBuffer() else { return }
 
@@ -44,8 +30,11 @@ final class OverlayRenderer {
 
         guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
         encoder.setRenderPipelineState(pipeline)
-        var scaleValue = Float(scale)
-        encoder.setFragmentBytes(&scaleValue, length: MemoryLayout<Float>.size, index: 0)
+        encoder.setFragmentBytes(
+            uniforms,
+            length: MemoryLayout<Float>.size * uniforms.count,
+            index: 0
+        )
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
 
@@ -54,9 +43,14 @@ final class OverlayRenderer {
     }
 }
 
-/// вью с CAMetalLayer в качестве backing layer, перерисовывается только при смене геометрии
+/// вью с CAMetalLayer в качестве backing layer: статичный шейдер перерисовывается
+/// только при смене геометрии, анимированный гоняет контроллер
 final class OverlayView: NSView {
     private let renderer: OverlayRenderer
+
+    var pipeline: MTLRenderPipelineState?
+    var parameters: [Float] = []
+    var time: Double = 0
 
     init(renderer: OverlayRenderer) {
         self.renderer = renderer
@@ -88,10 +82,22 @@ final class OverlayView: NSView {
     }
 
     func render() {
-        guard let layer = layer as? CAMetalLayer, let scale = window?.backingScaleFactor else { return }
+        guard let layer = layer as? CAMetalLayer,
+              let pipeline,
+              let scale = window?.backingScaleFactor else { return }
+
         layer.contentsScale = scale
         layer.drawableSize = CGSize(width: bounds.width * scale, height: bounds.height * scale)
-        renderer.draw(in: layer, scale: scale)
+        renderer.draw(
+            in: layer,
+            pipeline: pipeline,
+            uniforms: uniformValues(
+                resolution: layer.drawableSize,
+                scale: scale,
+                time: time,
+                parameters: parameters
+            )
+        )
     }
 }
 
@@ -121,10 +127,14 @@ final class OverlayWindow: NSWindow {
     override var canBecomeMain: Bool { false }
 }
 
-/// показывает и убирает оверлей, следит за сменой параметров экрана
+/// показывает и убирает оверлей, компилирует шейдеры и гоняет анимацию
 final class OverlayController {
     private let renderer = OverlayRenderer()
     private var window: OverlayWindow?
+    private var pipelines: [String: MTLRenderPipelineState] = [:]
+    private var timer: Timer?
+    private var startTime: CFTimeInterval = 0
+    private var currentPlugin: ShaderPlugin?
 
     init() {
         NotificationCenter.default.addObserver(
@@ -135,26 +145,64 @@ final class OverlayController {
         )
     }
 
-    func setVisible(_ visible: Bool) {
-        if visible {
-            show()
-        } else {
-            window?.orderOut(nil)
-            window = nil
-        }
-    }
+    func show(plugin: ShaderPlugin) throws {
+        let pipeline = try cachedPipeline(for: plugin)
+        currentPlugin = plugin
 
-    private func show() {
         guard let screen = NSScreen.screens.first else { return }
         let window = self.window ?? OverlayWindow(screen: screen, renderer: renderer)
         window.setFrame(screen.frame, display: true)
+
+        guard let view = window.contentView as? OverlayView else { return }
+        view.pipeline = pipeline
+        view.parameters = plugin.defaultParameters
+
         window.orderFrontRegardless()
-        (window.contentView as? OverlayView)?.render()
         self.window = window
+
+        startTime = CACurrentMediaTime()
+        view.time = 0
+        view.render()
+
+        setAnimating(plugin.isAnimated)
+    }
+
+    func hide() {
+        setAnimating(false)
+        window?.orderOut(nil)
+        window = nil
+        currentPlugin = nil
+    }
+
+    private func cachedPipeline(for plugin: ShaderPlugin) throws -> MTLRenderPipelineState {
+        if let cached = pipelines[plugin.identifier] {
+            return cached
+        }
+        let pipeline = try makePipeline(device: renderer.device, plugin: plugin)
+        pipelines[plugin.identifier] = pipeline
+        return pipeline
+    }
+
+    // ponytail: обычный таймер вместо синхронизации с vsync. дрожание кадра на шуме
+    // и полосах незаметно, а CAMetalDisplayLink требует macOS 14 при цели 13
+    private func setAnimating(_ animating: Bool) {
+        timer?.invalidate()
+        timer = nil
+        guard animating else { return }
+
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            guard let self, let view = self.window?.contentView as? OverlayView else { return }
+            view.time = CACurrentMediaTime() - self.startTime
+            view.render()
+        }
+        // .common, иначе анимация встаёт на время открытого меню
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     @objc private func screenParametersDidChange() {
-        guard window != nil else { return }
-        show()
+        guard let window, let screen = NSScreen.screens.first else { return }
+        window.setFrame(screen.frame, display: true)
+        (window.contentView as? OverlayView)?.render()
     }
 }

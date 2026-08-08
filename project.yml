@@ -11,6 +11,9 @@ targets:
     platform: macOS
     sources:
       - Sources
+      # folder reference: пресеты попадают в бандл со своей структурой папок
+      - path: Resources/Shaders
+        type: folder
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.senya.ScreenFilter
