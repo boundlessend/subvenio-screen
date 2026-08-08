@@ -36,18 +36,23 @@ DEVELOPMENT_TEAM = <your team id>
 ```
 Sources/            Swift, one file per concern
   AppDelegate       menu bar and window wiring
+  SettingsWindow    the settings page, SwiftUI
+  Preview           the preset preview on the bundled picture
   EffectController  state, backend selection, persistence
-  Overlay           overlay window, Metal view, renderer, capture lifecycle
+  PluginSettings    slider values and per-preset options
+  Overlay           overlay window, Metal view, effect lifecycle
+  Renderer          Metal device, the draw call, the display link
   Gamma             level 1 backend
   Capture           level 3 backend
-  ShaderPlugin      manifest model, validation and loader
+  Permissions       Screen Recording onboarding and alerts
+  ShaderPlugin      manifest model, validation, loader and installer
   ShaderPipeline    uniform layout, shader prelude, runtime compilation
   PluginWatcher     FSEvents watch over the plugin folder
   WindowTracking    window-scoped mode
   Logging           os.Logger categories
-Tests/              gamma tables, manifest validation, uniform layout
+Tests/              gamma tables, manifest validation, uniform layout, geometry
 Resources/Shaders/  bundled presets
-assets/icon.png     the icon used by the README
+assets/             images used by the README
 scripts/release.sh  Release build packaged into dist/
 project.yml         XcodeGen project definition
 Signing.xcconfig    signing defaults, overridable locally
@@ -74,10 +79,13 @@ Presets live in the app's sandbox container:
 ```
 
 Nobody should have to type that, so settings has an "Open shaders folder"
-button. Bundled presets are copied there on first launch, folder by folder, and
-existing folders are never overwritten - delete a folder to get the bundled
-version back. The folder is watched, so a new or edited preset is picked up
-without a restart.
+button. Bundled presets are copied there on first launch, folder by folder. On
+every later launch each bundled preset is fingerprinted (SHA-256 over the folder
+contents) and compared with the fingerprint recorded when it was installed: an
+untouched copy is replaced by the version shipped with the app, an edited one is
+left exactly as it is. "Restore bundled presets" in settings overwrites all six
+regardless. The folder is watched, so a new or edited preset is picked up without
+a restart.
 
 A preset is a folder with `manifest.json` and, for levels 2 and 3,
 `shader.metal`:

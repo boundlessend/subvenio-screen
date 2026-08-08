@@ -18,6 +18,13 @@ sepia look over your whole desktop - every app, the Dock, the menu bar. One
 hotkey turns it on, the same hotkey turns it off, and the effect is back exactly
 where you left it after a restart.
 
+<p align="center"><img src="assets/presets.png" alt="The six bundled presets"></p>
+
+The six presets that ship with the app, each rendered through the same shader the
+screen gets. The effect itself cannot be screenshotted: the overlay is excluded
+from screen capture on purpose, so these are offline renders of the picture the
+settings window previews on.
+
 ## Features
 
 - **Six presets out of the box**: Invert, Sepia, Scanlines, Film Grain, VHS and
@@ -44,6 +51,8 @@ where you left it after a restart.
   downloads or installs anything by itself; it tells you a version is out and
   opens the release page.
 - **English and Russian interface.** Launch at login is one checkbox.
+
+<p align="center"><img src="assets/settings.png" width="620" alt="The settings window"></p>
 
 ## Install
 
@@ -94,7 +103,17 @@ settings window has an **Open shaders folder** button that takes you straight
 there; save a file and the menu updates itself, no restart. A broken preset
 shows the actual error instead of quietly disappearing.
 
+The six bundled presets are yours to edit. An edited one stays as you left it
+even when a new version of the app ships a different version of the same preset,
+and **Restore bundled presets** in settings puts all six back the way they came.
+
 The format is described in [DEVELOPMENT.md](DEVELOPMENT.md#writing-a-shader).
+
+**A preset someone hands you is code, not a picture.** It is Metal source that
+this app compiles and runs on your GPU. The app runs inside the App Sandbox, so a
+preset cannot reach your files or the network, but it can still draw whatever it
+likes over your whole screen and cost as much GPU time as it wants. Read a shader
+before you drop it in, the same way you would read a script.
 
 ## Known limits
 
@@ -110,4 +129,11 @@ The format is described in [DEVELOPMENT.md](DEVELOPMENT.md#writing-a-shader).
 
 Built from source with `make run`; the details live in
 [DEVELOPMENT.md](DEVELOPMENT.md), and the reasoning behind the architecture in
-[PLAN.md](PLAN.md).
+[PLAN.md](PLAN.md). What changed between versions is in
+[CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+[BSD 3-Clause](LICENSE). The two dependencies,
+[KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) and
+[Pow](https://github.com/EmergeTools/Pow), are MIT.

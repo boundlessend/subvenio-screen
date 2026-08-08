@@ -56,7 +56,10 @@ white" with an explicit warning in the UI, never as the foundation.
 ## Decisions
 
 1. **Purpose and reach.** A private repository for personal use for now. No Mac
-   App Store. The repository goes public later.
+   App Store. The repository goes public later, under the BSD 3-Clause license:
+   permissive like MIT, with the extra clause that keeps the author's name out of
+   endorsements for derived work. Without a license file at all, a public
+   repository would be readable and nothing else.
 2. **Effect area.** Three tiers: one global hotkey for the whole display, extra
    hotkeys configurable per display, and a separate mode where the effect only
    covers the area of a chosen window.
@@ -82,6 +85,22 @@ white" with an explicit warning in the UI, never as the foundation.
     layer as the real effect, so what the window shows is what the screen gets.
     Level 1 lands in scanout and cannot be sampled, so the preview applies the
     same table to the picture itself.
+18. **Turning a level 1 effect off restores every display, not only ours.**
+    `CGSetDisplayTransferByTable` writes one display, but the public API to undo
+    it is `CGDisplayRestoreColorSyncSettings`, which resets all of them to their
+    ColorSync profiles. Anything another program had set - Night Shift, f.lux, a
+    custom calibration - goes back to the profile until that program applies it
+    again. There is no per-display public counterpart, and leaving the screen
+    tinted is worse, so this is accepted and recorded rather than worked around.
+19. **Bundled presets are updated by fingerprint, not by version number.** A
+    preset is copied into the user's folder once, and a fix shipped later has to
+    reach the copy: the noise bug of 1.0.1 would otherwise still be sitting in
+    every folder created before it. On each launch the app compares a SHA-256 of
+    the folder's contents with the one recorded when it installed that preset. A
+    match means nobody edited it and it can be replaced; a mismatch means the
+    user's work is in there and it is left alone. A version field in the manifest
+    would need every preset author to maintain it honestly, and would still not
+    tell edited copies from untouched ones.
 17. **The preview ticks only while its window is on screen.** A closed or
     minimised window costs nothing, measured: 2.6% of a core with an animated
     preset visible, 0.0% once the window is gone. A window fully covered by
