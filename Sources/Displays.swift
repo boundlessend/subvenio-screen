@@ -22,3 +22,15 @@ func availableDisplays() -> [DisplayChoice] {
 func screen(for displayID: CGDirectDisplayID) -> NSScreen? {
     NSScreen.screens.first { $0.displayID == displayID } ?? NSScreen.screens.first
 }
+
+/// доля кадра дисплея, которую занимает рамка: на весь экран это (0, 0, 1, 1).
+/// начало сверху слева, как у текстуры захвата
+func sourceRect(for frame: CGRect, on screen: NSScreen) -> CGRect {
+    let bounds = screen.frame
+    return CGRect(
+        x: (frame.minX - bounds.minX) / bounds.width,
+        y: (bounds.maxY - frame.maxY) / bounds.height,
+        width: frame.width / bounds.width,
+        height: frame.height / bounds.height
+    )
+}

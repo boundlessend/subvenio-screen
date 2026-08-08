@@ -34,8 +34,28 @@ final class EffectController: ObservableObject {
         }
     }
 
+    /// эффект только в области выбранного окна вместо всего дисплея
+    @Published var windowModeEnabled = false {
+        didSet {
+            guard windowModeEnabled != oldValue else { return }
+            if isEnabled {
+                enable()
+            } else {
+                tracker = nil
+            }
+        }
+    }
+
+    @Published var trackedWindowID: CGWindowID? {
+        didSet {
+            guard trackedWindowID != oldValue, isEnabled, windowModeEnabled else { return }
+            enable()
+        }
+    }
+
     private let overlay = OverlayController()
     private let gamma = GammaController()
+    private var tracker: WindowTracker?
 
     init() {
         let storedDisplay = UserDefaults.standard.integer(forKey: Self.selectedDisplayKey)
@@ -132,6 +152,13 @@ final class EffectController: ObservableObject {
             showAlert(title: "Нет ни одного шейдера", message: shadersDirectory().path)
             return
         }
+
+        tracker = nil
+        guard let frame = targetFrame(for: plugin) else {
+            disable()
+            return
+        }
+
         do {
             switch plugin.kind {
             case let .gamma(settings):
@@ -143,12 +170,14 @@ final class EffectController: ObservableObject {
                 try overlay.show(
                     plugin: plugin,
                     parameters: parameters(for: plugin),
-                    displayID: selectedDisplayID
+                    displayID: selectedDisplayID,
+                    frame: frame
                 )
+                startTrackingIfNeeded()
                 setEnabled(true)
             case .capture:
                 gamma.deactivate()
-                startCapture(plugin: plugin)
+                startCapture(plugin: plugin, frame: frame)
             }
         } catch {
             disable()
@@ -157,9 +186,40 @@ final class EffectController: ObservableObject {
     }
 
     func disable() {
+        tracker = nil
         overlay.hide()
         gamma.deactivate()
         setEnabled(false)
+    }
+
+    /// область эффекта: рамка выбранного окна или весь дисплей.
+    /// уровень 1 живёт в scanout целиком, областью его не ограничить
+    private func targetFrame(for plugin: ShaderPlugin) -> CGRect? {
+        guard windowModeEnabled, plugin.manifest.level != .gammaLUT else {
+            return screen(for: selectedDisplayID)?.frame
+        }
+        guard let id = trackedWindowID else {
+            showAlert(title: "Окно не выбрано", message: "Выберите окно в настройках или снимите режим «только под окном».")
+            return nil
+        }
+        guard let frame = windowFrame(id) else {
+            showAlert(title: "Окно недоступно", message: "Выбранное окно закрыто или свёрнуто.")
+            return nil
+        }
+        return frame
+    }
+
+    private func startTrackingIfNeeded() {
+        guard windowModeEnabled, let id = trackedWindowID else { return }
+        tracker = WindowTracker(windowID: id) { [weak self] frame in
+            guard let self else { return }
+            if let frame {
+                self.overlay.updateFrame(frame)
+            } else {
+                // окно свернули или закрыли: эффект снимается, приложение остаётся работать
+                self.disable()
+            }
+        }
     }
 
     /// вызывается при выходе: иначе после закрытия экран остался бы перекрашенным
@@ -172,7 +232,7 @@ final class EffectController: ObservableObject {
         UserDefaults.standard.set(enabled, forKey: Self.enabledKey)
     }
 
-    private func startCapture(plugin: ShaderPlugin) {
+    private func startCapture(plugin: ShaderPlugin, frame: CGRect) {
         guard ensureScreenRecordingAccess() else {
             disable()
             return
@@ -183,6 +243,7 @@ final class EffectController: ObservableObject {
                     plugin: plugin,
                     parameters: parameters(for: plugin),
                     displayID: selectedDisplayID,
+                    frame: frame,
                     showsCursor: showsCursor(for: plugin)
                 ) { [weak self] error in
                     DispatchQueue.main.async {
@@ -193,6 +254,7 @@ final class EffectController: ObservableObject {
                         )
                     }
                 }
+                startTrackingIfNeeded()
                 setEnabled(true)
             } catch {
                 disable()

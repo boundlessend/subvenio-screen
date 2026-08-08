@@ -4,6 +4,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var effects: EffectController
+    /// список окон снимается при открытии и по кнопке: он живой и меняется постоянно
+    @State private var windows: [TrackedWindow] = availableWindows()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -72,6 +74,26 @@ struct SettingsView: View {
                     }
                 }
                 .frame(maxWidth: 380)
+
+                Toggle("Только под выбранным окном", isOn: $effects.windowModeEnabled)
+
+                if effects.windowModeEnabled {
+                    if plugin.manifest.level == .gammaLUT {
+                        Text("Уровень 1 меняет таблицу всего дисплея, областью окна его ограничить нельзя: этот пресет останется на весь экран.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Picker("Окно:", selection: $effects.trackedWindowID) {
+                            Text("не выбрано").tag(CGWindowID?.none)
+                            ForEach(windows, id: \.id) { window in
+                                Text(window.title).tag(CGWindowID?.some(window.id))
+                            }
+                        }
+                        Button("Обновить") { windows = availableWindows() }
+                    }
+                    .frame(maxWidth: 480)
+                }
 
                 // проверка конфликтов с системными комбинациями идёт из коробки
                 KeyboardShortcuts.Recorder("Переключить эффект:", name: .toggleEffect)

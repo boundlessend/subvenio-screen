@@ -59,6 +59,8 @@ final class OverlayView: NSView {
     var pipeline: MTLRenderPipelineState?
     var parameters: [Float] = []
     var time: Double = 0
+    /// какой кусок кадра дисплея показывает этот оверлей, в долях от кадра
+    var sourceRect = CGRect(x: 0, y: 0, width: 1, height: 1)
 
     init(renderer: OverlayRenderer) {
         self.renderer = renderer
@@ -103,6 +105,7 @@ final class OverlayView: NSView {
                 resolution: layer.drawableSize,
                 scale: scale,
                 time: time,
+                sourceRect: sourceRect,
                 parameters: parameters
             ),
             source: source
@@ -156,10 +159,31 @@ final class OverlayController {
         )
     }
 
-    func show(plugin: ShaderPlugin, parameters: [Float], displayID: CGDirectDisplayID) throws {
-        let view = try prepareWindow(for: plugin, parameters: parameters, displayID: displayID)
+    func show(
+        plugin: ShaderPlugin,
+        parameters: [Float],
+        displayID: CGDirectDisplayID,
+        frame: CGRect
+    ) throws {
+        let view = try prepareWindow(
+            for: plugin,
+            parameters: parameters,
+            displayID: displayID,
+            frame: frame
+        )
         view.render(source: nil)
         setAnimating(plugin.isAnimated)
+    }
+
+    /// окно под эффектом переехало или изменило размер
+    func updateFrame(_ frame: CGRect) {
+        guard let window, let view = window.contentView as? OverlayView,
+              let target = screen(for: currentDisplayID) else { return }
+        window.setFrame(frame, display: true)
+        view.sourceRect = sourceRect(for: frame, on: target)
+        if timer == nil, capture == nil {
+            view.render(source: nil)
+        }
     }
 
     /// правка слайдера в настройках доезжает до работающего эффекта без перезапуска
@@ -178,13 +202,19 @@ final class OverlayController {
         plugin: ShaderPlugin,
         parameters: [Float],
         displayID: CGDirectDisplayID,
+        frame: CGRect,
         showsCursor: Bool,
         onStop: @escaping (Error) -> Void
     ) async throws {
         // async-функция без изоляции исполняется вне главного потока, а NSWindow и NSScreen
         // допустимы только на нём
         let (scale, framesPerSecond) = try await MainActor.run { () -> (CGFloat, Int) in
-            _ = try prepareWindow(for: plugin, parameters: parameters, displayID: displayID)
+            _ = try prepareWindow(
+                for: plugin,
+                parameters: parameters,
+                displayID: displayID,
+                frame: frame
+            )
             let target = screen(for: displayID)
             return (target?.backingScaleFactor ?? 2, target?.maximumFramesPerSecond ?? 60)
         }
@@ -222,7 +252,8 @@ final class OverlayController {
     private func prepareWindow(
         for plugin: ShaderPlugin,
         parameters: [Float],
-        displayID: CGDirectDisplayID
+        displayID: CGDirectDisplayID,
+        frame: CGRect
     ) throws -> OverlayView {
         let pipeline = try cachedPipeline(for: plugin)
         currentPlugin = plugin
@@ -232,13 +263,14 @@ final class OverlayController {
             throw CaptureError.noDisplay
         }
         let window = self.window ?? OverlayWindow(screen: target, renderer: renderer)
-        window.setFrame(target.frame, display: true)
+        window.setFrame(frame, display: true)
 
         guard let view = window.contentView as? OverlayView else {
             fatalError("у оверлейного окна не тот contentView")
         }
         view.pipeline = pipeline
         view.parameters = parameters
+        view.sourceRect = sourceRect(for: frame, on: target)
         view.time = 0
 
         window.orderFrontRegardless()
@@ -275,6 +307,8 @@ final class OverlayController {
 
     @objc private func screenParametersDidChange() {
         guard let window, let target = screen(for: currentDisplayID) else { return }
+        // рамку окна под эффектом пересчитает трекер, здесь только полноэкранный случай
+        guard window.frame.size == target.frame.size else { return }
         window.setFrame(target.frame, display: true)
         (window.contentView as? OverlayView)?.render(source: nil)
     }

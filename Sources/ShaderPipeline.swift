@@ -15,6 +15,9 @@ struct Uniforms {
     float2 resolution;
     float scale;
     float time;
+    // какой кусок кадра дисплея показывает этот оверлей: под окном он меньше экрана
+    float2 sourceOrigin;
+    float2 sourceSize;
     float params[\(maxShaderParameters)];
 };
 
@@ -33,6 +36,11 @@ constexpr sampler overlay_sampler(coord::normalized, address::clamp_to_edge, fil
 // дешёвый хеш-шум для зерна и полос
 inline float overlay_hash(float2 p) {
     return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+}
+
+// координата в кадре захвата: на весь экран это те же uv, под окном сдвиг и масштаб
+inline float2 overlay_source_uv(float2 uv, constant Uniforms &u) {
+    return u.sourceOrigin + uv * u.sourceSize;
 }
 
 """
@@ -74,13 +82,24 @@ func makePipeline(device: MTLDevice, plugin: ShaderPlugin) throws -> MTLRenderPi
     }
 }
 
-/// раскладка совпадает с struct Uniforms в прологе: float2 + float + float + float[8]
-func uniformValues(resolution: CGSize, scale: CGFloat, time: Double, parameters: [Float]) -> [Float] {
+/// раскладка совпадает с struct Uniforms в прологе:
+/// float2 + float + float + float2 + float2 + float[8]
+func uniformValues(
+    resolution: CGSize,
+    scale: CGFloat,
+    time: Double,
+    sourceRect: CGRect,
+    parameters: [Float]
+) -> [Float] {
     var values: [Float] = [
         Float(resolution.width),
         Float(resolution.height),
         Float(scale),
         Float(time),
+        Float(sourceRect.origin.x),
+        Float(sourceRect.origin.y),
+        Float(sourceRect.width),
+        Float(sourceRect.height),
     ]
     values.append(contentsOf: parameters)
     values.append(contentsOf: [Float](repeating: 0, count: maxShaderParameters - parameters.count))
