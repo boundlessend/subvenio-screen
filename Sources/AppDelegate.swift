@@ -69,8 +69,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
-        let name = effects.status == nil ? "tv" : "exclamationmark.triangle"
-        button.image = NSImage(systemSymbolName: name, accessibilityDescription: "Subvenio Screen")
+        // свой силуэт вместо системного символа: та же форма, что у иконки приложения.
+        // template-режим означает, что цвет выбирает меню-бар, а не мы
+        let image = effects.status == nil
+            ? NSImage(named: "MenuBarIcon")
+            : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
+        image?.isTemplate = true
+        image?.accessibilityDescription = "Subvenio Screen"
+        button.image = image
         button.appearsDisabled = !effects.isEnabled && effects.status == nil
         button.toolTip = effects.status?.title ?? effects.selectedPlugin?.manifest.name
     }
