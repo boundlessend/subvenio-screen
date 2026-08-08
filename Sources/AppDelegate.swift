@@ -76,15 +76,82 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             case let .gamma(settings):
                 overlay.hide()
                 try gamma.activate(settings)
+                setEnabled(true)
             case .overlay:
                 gamma.deactivate()
                 try overlay.show(plugin: plugin)
+                setEnabled(true)
+            case .capture:
+                gamma.deactivate()
+                startCapture(plugin: plugin)
             }
-            setEnabled(true)
         } catch {
             disableEffect()
             showAlert(title: "Эффект не запустился", message: error.localizedDescription)
         }
+    }
+
+    private func startCapture(plugin: ShaderPlugin) {
+        guard ensureScreenRecordingAccess() else {
+            disableEffect()
+            return
+        }
+        Task { @MainActor in
+            do {
+                try await overlay.showCapture(plugin: plugin) { [weak self] error in
+                    DispatchQueue.main.async {
+                        self?.disableEffect()
+                        self?.showAlert(
+                            title: "Захват экрана остановлен",
+                            message: error.localizedDescription
+                        )
+                    }
+                }
+                setEnabled(true)
+            } catch {
+                disableEffect()
+                showAlert(title: "Захват экрана не запустился", message: error.localizedDescription)
+            }
+        }
+    }
+
+    /// свой экран объяснения до системного диалога, как договорились в PLAN.md
+    private func ensureScreenRecordingAccess() -> Bool {
+        if hasScreenRecordingAccess() {
+            return true
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        let explanation = NSAlert()
+        explanation.messageText = "Этому эффекту нужно разрешение Screen Recording"
+        explanation.informativeText = """
+        Гамма-таблица умеет менять каналы по отдельности, но не смешивать их, \
+        поэтому честный чёрно-белый обязан читать изображение экрана.
+
+        Кадры живут только в памяти до вывода на экран: приложение ничего не пишет \
+        на диск и никуда не передаёт.
+
+        Дальше откроется системный диалог, где надо разрешить запись экрана.
+        """
+        explanation.addButton(withTitle: "Продолжить")
+        explanation.addButton(withTitle: "Отмена")
+        guard explanation.runModal() == .alertFirstButtonReturn else { return false }
+
+        if requestScreenRecordingAccess() {
+            return true
+        }
+
+        // системный диалог показывается один раз за установку, дальше только руками
+        NSApp.activate(ignoringOtherApps: true)
+        let denied = NSAlert()
+        denied.messageText = "Разрешение не выдано"
+        denied.informativeText = "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите ScreenFilter."
+        denied.addButton(withTitle: "Открыть настройки")
+        denied.addButton(withTitle: "Отмена")
+        if denied.runModal() == .alertFirstButtonReturn {
+            openScreenRecordingSettings()
+        }
+        return false
     }
 
     private func disableEffect() {
@@ -128,6 +195,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func showAlert(title: String, message: String) {
+        // без активации окно алерта у LSUIElement-приложения уедет за чужие окна
+        NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message

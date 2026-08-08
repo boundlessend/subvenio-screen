@@ -21,9 +21,12 @@ targets:
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.0"
-        CODE_SIGN_IDENTITY: "-"
+        # настоящая подпись, а не ad-hoc: разрешение Screen Recording в TCC привязано
+        # к team id и bundle id, поэтому переживает пересборку
+        CODE_SIGN_IDENTITY: 50DE49C2D301E0833C23C99465E11835AC1028F7
         CODE_SIGN_STYLE: Manual
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: WN472X65XN
+        PROVISIONING_PROFILE_SPECIFIER: ""
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: ""

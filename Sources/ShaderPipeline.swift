@@ -22,9 +22,13 @@ vertex VertexOut overlay_vertex(uint vid [[vertex_id]]) {
     float2 p = float2((vid << 1) & 2, vid & 2);
     VertexOut out;
     out.position = float4(p * 2.0 - 1.0, 0.0, 1.0);
-    out.uv = p;
+    // uv с началом в левом верхнем углу, как у текстуры захвата
+    out.uv = float2(p.x, 1.0 - p.y);
     return out;
 }
+
+// сэмплер для уровня 3: плагин читает им кадр из source
+constexpr sampler overlay_sampler(coord::normalized, address::clamp_to_edge, filter::linear);
 
 // дешёвый хеш-шум для зерна и полос
 inline float overlay_hash(float2 p) {
@@ -48,8 +52,12 @@ func shaderSource(for plugin: ShaderPlugin, source: String) -> String {
 // ponytail: компиляция занимает сотни миллисекунд и результат живёт в памяти до выхода.
 // дисковый кеш через MTLBinaryArchive появится, когда пресетов станет много или старт станет заметным
 func makePipeline(device: MTLDevice, plugin: ShaderPlugin) throws -> MTLRenderPipelineState {
-    guard case let .overlay(source) = plugin.kind else {
-        fatalError("makePipeline вызван для плагина уровня \(plugin.manifest.level.rawValue)")
+    let source: String
+    switch plugin.kind {
+    case let .overlay(text), let .capture(text):
+        source = text
+    case .gamma:
+        fatalError("makePipeline вызван для плагина уровня 1")
     }
     do {
         let library = try device.makeLibrary(

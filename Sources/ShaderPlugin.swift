@@ -37,6 +37,7 @@ struct ShaderManifest: Decodable {
 enum PluginKind {
     case gamma(GammaSettings)
     case overlay(source: String)
+    case capture(source: String)
 }
 
 struct ShaderPlugin {
@@ -172,7 +173,7 @@ private func pluginKind(
         }
         return .success(.gamma(gamma))
 
-    case .overlay:
+    case .overlay, .capture:
         let sourceURL = directory.appendingPathComponent("shader.metal")
         guard let source = try? String(contentsOf: sourceURL, encoding: .utf8) else {
             return .failure(.sourceMissing(plugin: manifest.name))
@@ -181,9 +182,8 @@ private func pluginKind(
         guard count <= maxShaderParameters else {
             return .failure(.tooManyParameters(plugin: manifest.name, count: count))
         }
-        return .success(.overlay(source: source))
-
-    case .capture:
-        return .failure(.unsupportedLevel(plugin: manifest.name, level: manifest.level))
+        return .success(
+            manifest.level == .overlay ? .overlay(source: source) : .capture(source: source)
+        )
     }
 }

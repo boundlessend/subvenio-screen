@@ -18,7 +18,12 @@ final class OverlayRenderer {
         self.queue = queue
     }
 
-    func draw(in layer: CAMetalLayer, pipeline: MTLRenderPipelineState, uniforms: [Float]) {
+    func draw(
+        in layer: CAMetalLayer,
+        pipeline: MTLRenderPipelineState,
+        uniforms: [Float],
+        source: MTLTexture?
+    ) {
         guard let drawable = layer.nextDrawable(),
               let buffer = queue.makeCommandBuffer() else { return }
 
@@ -35,6 +40,9 @@ final class OverlayRenderer {
             length: MemoryLayout<Float>.size * uniforms.count,
             index: 0
         )
+        if let source {
+            encoder.setFragmentTexture(source, index: 0)
+        }
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
 
@@ -73,15 +81,15 @@ final class OverlayView: NSView {
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
-        render()
+        render(source: nil)
     }
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
-        render()
+        render(source: nil)
     }
 
-    func render() {
+    func render(source: MTLTexture?) {
         guard let layer = layer as? CAMetalLayer,
               let pipeline,
               let scale = window?.backingScaleFactor else { return }
@@ -96,7 +104,8 @@ final class OverlayView: NSView {
                 scale: scale,
                 time: time,
                 parameters: parameters
-            )
+            ),
+            source: source
         )
     }
 }
@@ -135,6 +144,7 @@ final class OverlayController {
     private var timer: Timer?
     private var startTime: CFTimeInterval = 0
     private var currentPlugin: ShaderPlugin?
+    private var capture: CaptureController?
 
     init() {
         NotificationCenter.default.addObserver(
@@ -146,32 +156,68 @@ final class OverlayController {
     }
 
     func show(plugin: ShaderPlugin) throws {
-        let pipeline = try cachedPipeline(for: plugin)
-        currentPlugin = plugin
-
-        guard let screen = NSScreen.screens.first else { return }
-        let window = self.window ?? OverlayWindow(screen: screen, renderer: renderer)
-        window.setFrame(screen.frame, display: true)
-
-        guard let view = window.contentView as? OverlayView else { return }
-        view.pipeline = pipeline
-        view.parameters = plugin.defaultParameters
-
-        window.orderFrontRegardless()
-        self.window = window
-
-        startTime = CACurrentMediaTime()
-        view.time = 0
-        view.render()
-
+        let view = try prepareWindow(for: plugin)
+        view.render(source: nil)
         setAnimating(plugin.isAnimated)
+    }
+
+    /// уровень 3: окно поднимается до старта потока, чтобы попасть в список исключений
+    /// SCContentFilter. кадры приходят с очереди захвата и рисуются на главной
+    func showCapture(plugin: ShaderPlugin, onStop: @escaping (Error) -> Void) async throws {
+        // async-функция без изоляции исполняется вне главного потока, а NSWindow и NSScreen
+        // допустимы только на нём
+        let (scale, framesPerSecond) = try await MainActor.run { () -> (CGFloat, Int) in
+            _ = try prepareWindow(for: plugin)
+            let screen = NSScreen.screens.first
+            return (screen?.backingScaleFactor ?? 2, screen?.maximumFramesPerSecond ?? 60)
+        }
+
+        let capture = CaptureController(
+            device: renderer.device,
+            onFrame: { [weak self] texture in
+                // ponytail: без пропуска кадров. рисование одного треугольника дешевле
+                // кадра дисплея, начнёт отставать - появится флаг занятости
+                DispatchQueue.main.async {
+                    guard let view = self?.window?.contentView as? OverlayView else { return }
+                    view.render(source: texture)
+                }
+            },
+            onStop: onStop
+        )
+        try await capture.start(scale: scale, framesPerSecond: framesPerSecond)
+        self.capture = capture
     }
 
     func hide() {
         setAnimating(false)
+        capture?.stop()
+        capture = nil
         window?.orderOut(nil)
         window = nil
         currentPlugin = nil
+    }
+
+    private func prepareWindow(for plugin: ShaderPlugin) throws -> OverlayView {
+        let pipeline = try cachedPipeline(for: plugin)
+        currentPlugin = plugin
+
+        guard let screen = NSScreen.screens.first else {
+            throw CaptureError.noDisplay
+        }
+        let window = self.window ?? OverlayWindow(screen: screen, renderer: renderer)
+        window.setFrame(screen.frame, display: true)
+
+        guard let view = window.contentView as? OverlayView else {
+            fatalError("у оверлейного окна не тот contentView")
+        }
+        view.pipeline = pipeline
+        view.parameters = plugin.defaultParameters
+        view.time = 0
+
+        window.orderFrontRegardless()
+        self.window = window
+        startTime = CACurrentMediaTime()
+        return view
     }
 
     private func cachedPipeline(for plugin: ShaderPlugin) throws -> MTLRenderPipelineState {
@@ -193,7 +239,7 @@ final class OverlayController {
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             guard let self, let view = self.window?.contentView as? OverlayView else { return }
             view.time = CACurrentMediaTime() - self.startTime
-            view.render()
+            view.render(source: nil)
         }
         // .common, иначе анимация встаёт на время открытого меню
         RunLoop.main.add(timer, forMode: .common)
@@ -203,6 +249,6 @@ final class OverlayController {
     @objc private func screenParametersDidChange() {
         guard let window, let screen = NSScreen.screens.first else { return }
         window.setFrame(screen.frame, display: true)
-        (window.contentView as? OverlayView)?.render()
+        (window.contentView as? OverlayView)?.render(source: nil)
     }
 }

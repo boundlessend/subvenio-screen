@@ -1,0 +1,8 @@
+{
+  "name": "Чёрно-белый",
+  "level": 3,
+  "animated": false,
+  "parameters": [
+    { "name": "amount", "min": 0, "max": 1, "default": 1.0 }
+  ]
+}
