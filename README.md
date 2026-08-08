@@ -2,7 +2,7 @@
 
 <h1 align="center">Subvenio Screen</h1>
 
-<p align="center">Retro effects over everything on your screen, switched on and off with one hotkey.</p>
+<p align="center">one hotkey between your Mac and 1984</p>
 
 <p align="center">
   <a href="https://github.com/boundlessend/subvenio-screen/actions/workflows/build.yml"><img alt="CI" src="https://github.com/boundlessend/subvenio-screen/actions/workflows/build.yml/badge.svg"></a>
