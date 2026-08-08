@@ -1,5 +1,6 @@
 import AppKit
 import KeyboardShortcuts
+import Pow
 import SwiftUI
 
 struct SettingsView: View {
@@ -52,7 +53,13 @@ struct SettingsView: View {
         Section("Effect") {
             Picker("Preset", selection: Binding(
                 get: { effects.selectedIdentifier ?? plugin.identifier },
-                set: { effects.selectedIdentifier = $0 }
+                // анимация нужна самому переходу превью: без транзакции SwiftUI
+                // подменит картинку мгновенно
+                set: { identifier in
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        effects.selectedIdentifier = identifier
+                    }
+                }
             )) {
                 ForEach(effects.plugins, id: \.identifier) { item in
                     Text(item.manifest.name).tag(item.identifier)
@@ -69,6 +76,9 @@ struct SettingsView: View {
                 EffectPreview(plugin: plugin, parameters: effects.parameters(for: plugin))
                     .frame(width: 260, height: 150)
                     .id(plugin.identifier)
+                    // смена пресета как смена кадра плёнки: по теме и заодно скрывает
+                    // паузу на компиляцию нового шейдера
+                    .transition(.movingParts.filmExposure)
             }
 
             HStack(spacing: 12) {
@@ -128,6 +138,8 @@ struct SettingsView: View {
                     Task { await updates.checkNow() }
                 }
                 .disabled(updates.isChecking)
+                // проверка тихая и почти мгновенная: без отклика непонятно, случилась ли она
+                .changeEffect(.shine, value: updates.lastCheck)
 
                 if updates.isChecking {
                     ProgressView().controlSize(.small)
@@ -135,8 +147,10 @@ struct SettingsView: View {
                     Button(String(format: String(localized: "Download %@"), release.version)) {
                         NSWorkspace.shared.open(release.url)
                     }
+                    .transition(.movingParts.pop(Color.accentColor))
                 }
             }
+            .animation(.spring(duration: 0.4), value: updates.available?.version)
 
             if let error = updates.lastError {
                 Text(error)

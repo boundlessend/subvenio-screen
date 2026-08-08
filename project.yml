@@ -18,6 +18,11 @@ packages:
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     exactVersion: 2.4.0
+  # переходы, которых нет в SwiftUI, и только в окне настроек: эффекты срабатывают
+  # на событие, а не крутятся фоном, поэтому на сам оверлей не влияют
+  Pow:
+    url: https://github.com/EmergeTools/Pow
+    exactVersion: 0.3.1
 
 targets:
   SubvenioScreen:
@@ -25,6 +30,7 @@ targets:
     platform: macOS
     dependencies:
       - package: KeyboardShortcuts
+      - package: Pow
     sources:
       - Sources
       - path: Resources/Localizable.xcstrings
