@@ -65,7 +65,7 @@ The Xcode project is generated from `project.yml` and is not tracked in git.
 ```sh
 make run      # generate, build, launch
 make test     # unit tests for the pure parts
-make release  # signed Release build zipped into dist/
+make release  # signed Release build packaged as a .dmg in dist/
 ```
 
 Signing defaults to automatic and needs nothing from you. TCC binds the Screen
@@ -79,16 +79,41 @@ CODE_SIGN_IDENTITY = <SHA-1 from security find-identity -v -p codesigning>
 DEVELOPMENT_TEAM = <your team id>
 ```
 
-Builds are not notarised, which is a deliberate choice for a personal tool: on
-another machine Gatekeeper will ask for a manual confirmation in
-Privacy & Security.
+## Install
+
+`make release` produces `dist/ScreenFilter <version>.dmg` (built with
+[create-dmg](https://github.com/sindresorhus/create-dmg), `brew install
+create-dmg`). Open it and drag the app onto Applications.
+
+Releases are versioned by hand: SemVer starting at 1.0.0, tagged in git
+(`git tag -a v1.0.0 -m "..."`). There is no auto-update mechanism; a new version
+means downloading a new disk image.
+
+Builds are not notarised, which is a deliberate choice for a personal tool. A
+disk image downloaded through a browser carries the quarantine flag, and
+Gatekeeper refuses to open an unnotarised app outright. Either right click the
+app and choose Open, confirm once in Privacy & Security, or clear the flag:
+
+```sh
+xattr -d com.apple.quarantine /Applications/ScreenFilter.app
+```
+
+Copying the image over AirDrop or a local network keeps the flag as well;
+copying it with `scp` or `rsync` does not set it in the first place.
 
 ## Writing a shader
 
-Plugins live in `~/Library/Application Support/ScreenFilter/Shaders/`. Bundled
-presets are copied there on first launch, folder by folder, and existing folders
-are never overwritten - delete a folder to get the bundled version back. The
-folder is watched, so a new or edited plugin is picked up without a restart.
+Plugins live in the app's sandbox container:
+
+```
+~/Library/Containers/dev.senya.ScreenFilter/Data/Library/Application Support/ScreenFilter/Shaders/
+```
+
+Nobody should have to type that, so settings has an "Open shaders folder"
+button. Bundled presets are copied there on first launch, folder by folder, and
+existing folders are never overwritten - delete a folder to get the bundled
+version back. The folder is watched, so a new or edited plugin is picked up
+without a restart.
 
 A plugin is a folder with `manifest.json` and, for levels 2 and 3,
 `shader.metal`:

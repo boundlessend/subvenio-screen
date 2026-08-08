@@ -70,7 +70,10 @@ white" with an explicit warning in the UI, never as the foundation.
    Black Light 3 lack.
 9. **Distribution.** Apple notarisation is not needed for a personal tool.
    Hardened Runtime is on regardless, since it costs nothing and is a
-   prerequisite if that ever changes.
+   prerequisite if that ever changes. Releases are disk images built with
+   `create-dmg`, versioned by hand from 1.0.0 and tagged in git. No Sparkle: an
+   update framework has to be maintained, signed and hosted, which is more work
+   than downloading a new image once in a while.
 10. **Load budget.** No fixed CPU/GPU percentage up front. The levers are
     exposed instead: capture buffer scale and a frame rate cap, both global
     settings rather than per-preset, because they describe the machine and not
@@ -129,8 +132,9 @@ not free here:
   Carbon underneath, so it pulls in no Accessibility requirement. Pinned to an
   exact version, because `Package.resolved` lives inside the generated
   `.xcodeproj` and is not in git.
-- Target architecture: universal binary (Apple Silicon + Intel). The code is
-  written portably, but see "Deferred" about testing on Intel.
+- Apple Silicon only. A universal binary was the original goal, but there is no
+  Intel machine to verify it on, and an untested architecture is a claim rather
+  than support.
 
 ## Testing strategy
 
@@ -147,17 +151,12 @@ Level 3 has one non-obvious trap: `sharingType = .none` hides the overlay from
 
 Questions consciously postponed. Not forgotten, just not needed yet.
 
-1. **Versioning and release cadence.** `scripts/release.sh` builds and packages;
-   tags are SemVer and set by hand. Revisit before making the repository public.
-2. **Testing on a real Intel Mac.** A universal binary is stated as a goal, but
-   without an Intel machine the compatibility is unverifiable. The README claims
-   Apple Silicon and says why.
-3. **Displays with different scale and refresh rate.** Retina next to non-Retina,
-   60 Hz next to 120 Hz - each needs its own render target and its own timing.
-   Affects the architecture of levels 2 and 3; to be worked out when independent
-   presets per display are implemented.
-4. **An icon of its own.** The status item borrows an SF Symbol and the app
-   bundle has no `AppIcon`, which is visible in Login Items and in the Screen
-   Recording list.
-5. **Project name.** `screen-filter` is a working title. Pick a real one before
-   opening the sources.
+1. **Project name.** `screen-filter` is a working title. Pick a real one before
+   opening the sources - it is baked into the bundle id, the log subsystem and
+   the container path, so renaming later costs the user their Screen Recording
+   grant and their shaders folder.
+2. **Independent presets per display.** One effect on one display today. Several
+   at once means a window, a `CaptureController` and a display link per screen,
+   which is also where displays with different scale and refresh rate stop being
+   free: `CADisplayLink` already follows the screen its view is on, but each
+   render target would need its own.

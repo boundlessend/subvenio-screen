@@ -41,7 +41,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.senya.ScreenFilter
         PRODUCT_NAME: ScreenFilter
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.0"
         # ловит гонки на границах, где уже расставлены акторы и Sendable,
