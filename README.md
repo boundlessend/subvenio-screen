@@ -26,6 +26,9 @@ where you left it after a restart.
   Accessibility permission needed.
 - **Live tuning.** Every preset has its own sliders - grain strength, vignette,
   scanline depth - and moving them changes the running effect immediately.
+- **A preview next to the sliders**, so you can see what a preset does before
+  putting it on the whole screen. It runs on a picture that ships with the app,
+  so even the preset that reads the screen previews without asking for anything.
 - **Window-only mode.** Instead of the whole display, the effect can follow a
   single window as it moves and resizes.
 - **Pick your display** when more than one is connected.

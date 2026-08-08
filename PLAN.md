@@ -69,7 +69,25 @@ white" with an explicit warning in the UI, never as the foundation.
    markedly simpler in it.
 5. **UI and configuration.** A menu bar icon for quickly switching presets plus
    a separate settings window for hotkeys, shaders and per-display and
-   per-window rules.
+   per-window rules. The window is one scrolling page of grouped sections rather
+   than a sidebar or tabs: there are four groups in total, and hiding four
+   groups behind navigation costs more clicks than it saves space.
+16. **The preview runs on a bundled picture, not on the screen.** Reading the
+    real screen for a thumbnail would demand the Screen Recording permission in
+    the one window that is supposed to explain the permissions, and would demand
+    it for the five presets that need nothing today. The picture is drawn to
+    carry what the presets act on: a full brightness range for gamma and
+    clipping, colour for tint and desaturation, and fine texture for grain and
+    scanlines. Levels 2 and 3 preview through the same shader and the same Metal
+    layer as the real effect, so what the window shows is what the screen gets.
+    Level 1 lands in scanout and cannot be sampled, so the preview applies the
+    same table to the picture itself.
+17. **The preview ticks only while its window is on screen.** A closed or
+    minimised window costs nothing, measured: 2.6% of a core with an animated
+    preset visible, 0.0% once the window is gone. A window fully covered by
+    another application keeps ticking, because macOS does not mark it occluded -
+    left as is, since it lasts as long as someone leaves settings open behind
+    another window.
 6. **Cursor and system elements.** A configurable option per preset. At level 3
    a cursor drawn inside the frame lags by the whole capture-shader-output
    delay, and that reads as a laggy mouse, so the default is the system cursor
@@ -148,9 +166,12 @@ not free here:
   chunk of work. In use:
   [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) - it
   records combinations in the UI and checks conflicts out of the box, and uses
-  Carbon underneath, so it pulls in no Accessibility requirement. Pinned to an
-  exact version, because `Package.resolved` lives inside the generated
-  `.xcodeproj` and is not in git.
+  Carbon underneath, so it pulls in no Accessibility requirement. Also
+  [Pow](https://github.com/EmergeTools/Pow) - transitions SwiftUI has no
+  equivalent for, used in three places in the settings window and nowhere else.
+  Its effects fire on an event instead of running in a loop, so they cost the
+  overlay nothing. Both are pinned to an exact version, because
+  `Package.resolved` lives inside the generated `.xcodeproj` and is not in git.
 - Apple Silicon only. A universal binary was the original goal, but there is no
   Intel machine to verify it on, and an untested architecture is a claim rather
   than support.
