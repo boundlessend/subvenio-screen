@@ -53,9 +53,8 @@ Two consequences worth knowing:
 
 ## Requirements
 
-- macOS 13.0 or later
-- Apple Silicon. The binary is built for both architectures, but only Apple
-  Silicon has actually been tested; see [PLAN.md](PLAN.md) on Intel.
+- macOS 14.0 or later
+- Apple Silicon only
 - Xcode 16 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
   (`brew install xcodegen`)
 

@@ -10,11 +10,9 @@ struct EffectStatus {
 
 /// состояние эффекта: какой пресет выбран, включён ли он и с какими параметрами.
 /// бэкенды выбираются по уровню плагина, активным остаётся ровно один.
-///
-/// потоковый контракт, он же причина `@unchecked Sendable`: класс работает только
-/// на главном потоке, потому что трогает NSWindow, Timer и UserDefaults. колбэки
-/// от захвата приходят туда же, см. `CaptureController`
-final class EffectController: ObservableObject, @unchecked Sendable {
+/// живёт на главном акторе: трогает окна, таймеры и публикует состояние в UI
+@MainActor
+final class EffectController: ObservableObject {
     private static let enabledKey = "effectEnabled"
     private static let selectedShaderKey = "selectedShader"
     private static let selectedDisplayKey = "selectedDisplay"
@@ -181,8 +179,11 @@ final class EffectController: ObservableObject, @unchecked Sendable {
 
     private func scheduleParameterFlush() {
         guard parameterFlush == nil else { return }
+        // таймер главного runloop зовёт замыкание на главном потоке, но типом это не выражено
         let timer = Timer(timeInterval: 0.5, repeats: false) { [weak self] _ in
-            self?.flushParameters()
+            MainActor.assumeIsolated {
+                self?.flushParameters()
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         parameterFlush = timer
@@ -449,11 +450,7 @@ func showAlert(title: String, message: String) {
 }
 
 func activateApp() {
-    if #available(macOS 14.0, *) {
-        NSApp.activate()
-    } else {
-        NSApp.activate(ignoringOtherApps: true)
-    }
+    NSApp.activate()
 }
 
 /// свой экран объяснения до системного диалога, как договорились в PLAN.md

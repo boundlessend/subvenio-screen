@@ -85,8 +85,8 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
     private let textureCache: CVMetalTextureCache
     /// зовётся с очереди захвата
     private let onFrame: @Sendable (CapturedFrame) -> Void
-    /// зовётся на главном потоке
-    private let onStop: @Sendable (Error) -> Void
+    /// зовётся на главном акторе
+    private let onStop: @MainActor @Sendable (Error) -> Void
 
     private var stream: SCStream?
     private let sampleQueue = DispatchQueue(label: "dev.senya.ScreenFilter.capture")
@@ -94,7 +94,7 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
     init(
         device: MTLDevice,
         onFrame: @escaping @Sendable (CapturedFrame) -> Void,
-        onStop: @escaping @Sendable (Error) -> Void
+        onStop: @escaping @MainActor @Sendable (Error) -> Void
     ) throws {
         var cache: CVMetalTextureCache?
         let status = CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &cache)
@@ -228,8 +228,10 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
     /// потока, а состояние живёт на нём
     func stream(_ stream: SCStream, didStopWithError error: Error) {
         DispatchQueue.main.async { [weak self] in
-            self?.stream = nil
-            self?.onStop(error)
+            MainActor.assumeIsolated {
+                self?.stream = nil
+                self?.onStop(error)
+            }
         }
     }
 }

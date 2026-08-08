@@ -2,7 +2,7 @@ name: ScreenFilter
 options:
   bundleIdPrefix: dev.senya
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "14.0"
   createIntermediateGroups: true
   developmentLanguage: en
 

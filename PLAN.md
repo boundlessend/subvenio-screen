@@ -79,13 +79,18 @@ white" with an explicit warning in the UI, never as the foundation.
     window has no right to interrupt someone else's work with a modal dialog.
     Modal alerts are left for what the user asked for directly: the permission
     onboarding and the detail behind a status item.
-12. **Concurrency.** `SWIFT_STRICT_CONCURRENCY = targeted`. Full actor isolation
-    of the UI layer is not possible while the target is macOS 13: delivering
-    capture frames from the sample queue would need `MainActor.assumeIsolated`
-    (macOS 14), and replacing it with `Task` gives up frame ordering. Instead
-    the controllers carry `@unchecked Sendable` with their threading contract
-    written down, and the state that used to be shared across queues was removed
-    outright.
+12. **Concurrency.** `SWIFT_STRICT_CONCURRENCY = targeted`, and the UI layer is
+    isolated for real: `AppDelegate`, `EffectController` and `OverlayController`
+    are `@MainActor`. Capture frames arrive on the ScreenCaptureKit queue and
+    reach the main thread through `DispatchQueue.main.async` plus
+    `MainActor.assumeIsolated` - the queue preserves frame order, `Task` does
+    not. `@unchecked Sendable` is left only where the boundary is held by a
+    contract rather than by the compiler: `CapturedFrame`, `CaptureController`
+    and `FrameSink`.
+13. **Deployment target macOS 14.** Ventura support was dropped to get that
+    isolation (`MainActor.assumeIsolated`) and `CADisplayLink`, which ties the
+    animation tick to the display the overlay actually sits on instead of a
+    fixed 60 Hz timer.
 
 ## System permissions
 

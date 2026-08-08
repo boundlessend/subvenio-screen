@@ -3,6 +3,7 @@ import Combine
 import KeyboardShortcuts
 
 /// приложение живёт только в меню-баре, окон и иконки в Dock нет
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let didShowWelcomeKey = "didShowWelcome"
 
