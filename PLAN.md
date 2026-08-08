@@ -1,8 +1,9 @@
 # Subvenio Screen - architecture decisions
 
-Why the app is built the way it is. What it does and how to use it lives in
-[README.md](README.md); this file records the decisions and the reasoning behind
-them, so they do not have to be rediscovered later.
+Why the app is built the way it is. What it does lives in [README.md](README.md)
+and how to build it in [DEVELOPMENT.md](DEVELOPMENT.md); this file records the
+decisions and the reasoning behind them, so they do not have to be rediscovered
+later.
 
 ## Scope
 
@@ -20,10 +21,20 @@ RetroMac does all of the above. We build the effect layer only.
 
 ## Why three rendering levels
 
-macOS has no public backdrop filter, so a transparent window cannot transform
-what is under it. The three levels and what each can do are described in
-[README.md](README.md#the-constraint-that-shapes-everything); this section holds
-only the decisions that followed from that constraint.
+macOS has no public backdrop filter. A transparent window **cannot** transform
+what is underneath it: `CALayer.backgroundFilters` and `compositingFilter` only
+affect the window's own content, and `NSVisualEffectView` does blur and vibrancy
+and nothing else. Without reading pixels you can draw **over** the screen, never
+**through** it. Hence three levels, and every preset declares which one it needs.
+
+| Level | Mechanism | Can do | Cost | Permission |
+|-------|-----------|--------|------|------------|
+| 1 | `CGSetDisplayTransferByTable` | per-channel work: tint, gamma, inversion, clipping | none, applied in scanout | none |
+| 2 | transparent overlay window + Metal | anything drawn on top: scanlines, vignette, grain, bands | one composited layer | none |
+| 3 | ScreenCaptureKit + Metal | anything that must read the screen: black and white, aberration, bloom | real, scales with resolution and refresh rate | Screen Recording |
+
+Level 1 lands after compositing, so it covers the cursor, the menu bar and the
+Dock for free, and cannot be confined to a window.
 
 **Levels combine.** Most retro effects are reachable without capturing the
 screen: "old TV" is a tint at level 1 plus scanlines and a vignette at level 2.
@@ -139,13 +150,15 @@ not free here:
 ## Testing strategy
 
 Unit tests cover only the deterministic parts: gamma table generation, manifest
-validation and the uniform buffer layout. Everything else in this app is
-rendering, and rendering is verified by eye and by the system: window geometry
-through `CGWindowListCopyWindowInfo`, gamma through
-`CGGetDisplayTransferByTable`, capture through the app's own os.Logger output.
+validation and the uniform buffer layout. Everything else here is rendering, and
+rendering is checked against the system rather than against a mock - the tools
+for that are listed in [DEVELOPMENT.md](DEVELOPMENT.md#layout).
 
-Level 3 has one non-obvious trap: `sharingType = .none` hides the overlay from
-`screencapture`, so a screenshot can never confirm that the effect is drawn.
+A shader is worth rendering offline into a texture before trusting it on screen.
+That is how the noise bug was caught: the hash mixed elapsed time into its
+argument, `sin` ran out of precision, and grain vanished four minutes in. On
+screen it looked like the effect fading out; offline the variance across the
+frame was measurably zero.
 
 ## Deferred
 
@@ -156,3 +169,8 @@ Questions consciously postponed. Not forgotten, just not needed yet.
    which is also where displays with different scale and refresh rate stop being
    free: `CADisplayLink` already follows the screen its view is on, but each
    render target would need its own.
+2. **Capturing only the window in window-scoped mode.** Level 3 captures the
+   whole display and crops in the shader. `SCStreamConfiguration.sourceRect` plus
+   `updateConfiguration` would capture just the window instead, at the cost of
+   reconfiguring the stream on every move. Worth doing if the window mode ever
+   feels heavy; the crop itself is free today.
