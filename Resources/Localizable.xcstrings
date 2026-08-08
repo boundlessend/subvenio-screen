@@ -233,6 +233,17 @@
         }
       }
     },
+    "Capture": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Захват экрана"
+          }
+        }
+      }
+    },
     "Capture rate:": {
       "extractionState": "manual",
       "localizations": {
@@ -343,6 +354,17 @@
         }
       }
     },
+    "Effect": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эффект"
+          }
+        }
+      }
+    },
     "Effect failed to start": {
       "extractionState": "manual",
       "localizations": {
@@ -427,6 +449,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Полное разрешение"
+          }
+        }
+      }
+    },
+    "General": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Основное"
           }
         }
       }
@@ -662,6 +695,17 @@
         }
       }
     },
+    "Preset": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пресет"
+          }
+        }
+      }
+    },
     "Preset unavailable": {
       "extractionState": "manual",
       "localizations": {
@@ -893,6 +937,17 @@
         }
       }
     },
+    "Updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновления"
+          }
+        }
+      }
+    },
     "Version %@ is available": {
       "extractionState": "manual",
       "localizations": {
@@ -900,6 +955,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доступна версия %@"
+          }
+        }
+      }
+    },
+    "Where it lands": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Где применяется"
           }
         }
       }
@@ -933,17 +999,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "не удалось поставить встроенные пресеты - %@"
-          }
-        }
-      }
-    },
-    "capture": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "захват"
           }
         }
       }
@@ -992,17 +1047,6 @@
         }
       }
     },
-    "gamma": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "гамма"
-          }
-        }
-      }
-    },
     "no Screen Recording permission": {
       "extractionState": "manual",
       "localizations": {
@@ -1032,17 +1076,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "старое стекло поверх нового экрана"
-          }
-        }
-      }
-    },
-    "overlay": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "оверлей"
           }
         }
       }
