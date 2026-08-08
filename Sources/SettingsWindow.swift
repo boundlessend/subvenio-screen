@@ -27,7 +27,7 @@ struct SettingsView: View {
                     HStack {
                         Text(plugin.manifest.name)
                         Spacer()
-                        Text("ур. \(plugin.manifest.level.rawValue)")
+                        Text("lvl \(plugin.manifest.level.rawValue)")
                             .foregroundStyle(.secondary)
                             .font(.caption)
                     }
@@ -35,7 +35,7 @@ struct SettingsView: View {
                 }
             }
 
-            Button("Открыть папку шейдеров") {
+            Button("Open shaders folder") {
                 NSWorkspace.shared.open(shadersDirectory())
             }
             .padding(8)
@@ -56,50 +56,50 @@ struct SettingsView: View {
 
                 if plugin.manifest.level == .capture {
                     Toggle(
-                        "Применять эффект к курсору",
+                        "Apply the effect to the cursor",
                         isOn: Binding(
                             get: { effects.showsCursor(for: plugin) },
                             set: { effects.setShowsCursor($0, for: plugin) }
                         )
                     )
-                    Text("Курсор попадёт внутрь кадра и будет отставать на всю задержку захвата: это ощущается как лаг мыши.")
+                    Text("The cursor moves inside the captured frame and lags by the whole pipeline delay, which reads as a laggy mouse.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Divider()
 
-                Picker("Монитор:", selection: $effects.selectedDisplayID) {
+                Picker("Display:", selection: $effects.selectedDisplayID) {
                     ForEach(effects.displays) { display in
                         Text(display.name).tag(display.id)
                     }
                 }
                 .frame(maxWidth: 380)
 
-                Toggle("Только под выбранным окном", isOn: $effects.windowModeEnabled)
+                Toggle("Only under the selected window", isOn: $effects.windowModeEnabled)
 
                 if effects.windowModeEnabled {
                     if plugin.manifest.level == .gammaLUT {
-                        Text("Уровень 1 меняет таблицу всего дисплея, областью окна его ограничить нельзя: этот пресет останется на весь экран.")
+                        Text("Level 1 rewrites the table of the whole display and cannot be confined to a window, so this preset stays full-screen.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     HStack {
-                        Picker("Окно:", selection: $effects.trackedWindowID) {
-                            Text("не выбрано").tag(CGWindowID?.none)
+                        Picker("Window:", selection: $effects.trackedWindowID) {
+                            Text("none").tag(CGWindowID?.none)
                             ForEach(windows, id: \.id) { window in
                                 Text(window.title).tag(CGWindowID?.some(window.id))
                             }
                         }
-                        Button("Обновить") { windows = availableWindows() }
+                        Button("Refresh") { windows = availableWindows() }
                     }
                     .frame(maxWidth: 480)
                 }
 
                 // проверка конфликтов с системными комбинациями идёт из коробки
-                KeyboardShortcuts.Recorder("Переключить эффект:", name: .toggleEffect)
+                KeyboardShortcuts.Recorder("Toggle effect:", name: .toggleEffect)
 
-                Toggle("Запускать при входе в систему", isOn: Binding(
+                Toggle("Launch at login", isOn: Binding(
                     get: { launchAtLogin },
                     set: { setLaunchAtLoginSafely($0) }
                 ))
@@ -108,7 +108,7 @@ struct SettingsView: View {
 
                 if !effects.loadErrors.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Не загрузились").font(.headline)
+                        Text("Failed to load").font(.headline)
                         ForEach(effects.loadErrors.indices, id: \.self) { index in
                             Text(effects.loadErrors[index].localizedDescription)
                                 .font(.caption)
@@ -120,7 +120,7 @@ struct SettingsView: View {
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
         } else {
-            Text("Нет ни одного пресета")
+            Text("No presets available")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
@@ -129,7 +129,7 @@ struct SettingsView: View {
     private func parameterControls(for plugin: ShaderPlugin) -> some View {
         let parameters = plugin.manifest.parameters ?? []
         if parameters.isEmpty {
-            Text("У этого пресета нет параметров: уровень 1 настраивается секцией gamma в манифесте.")
+            Text("This preset has no parameters: level 1 is configured by the gamma section of its manifest.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } else {
@@ -149,7 +149,7 @@ struct SettingsView: View {
                         .frame(width: 48, alignment: .trailing)
                 }
             }
-            Button("Сбросить к умолчаниям") {
+            Button("Reset to defaults") {
                 effects.resetParameters(for: plugin)
             }
         }
@@ -159,7 +159,10 @@ struct SettingsView: View {
         do {
             try setLaunchAtLogin(enabled)
         } catch {
-            showAlert(title: "Не удалось изменить автозапуск", message: error.localizedDescription)
+            showAlert(
+                title: String(localized: "Could not change launch at login"),
+                message: error.localizedDescription
+            )
         }
         // состояние берём у системы, а не у переключателя: регистрация могла не пройти
         launchAtLogin = isLaunchAtLoginEnabled()
@@ -168,11 +171,11 @@ struct SettingsView: View {
     private func levelDescription(_ level: RenderLevel) -> String {
         switch level {
         case .gammaLUT:
-            return "Уровень 1: гамма-таблица. Покрывает курсор, меню-бар и Dock, ничего не стоит по нагрузке."
+            return String(localized: "Level 1: gamma table. Covers the cursor, the menu bar and the Dock, and costs nothing.")
         case .overlay:
-            return "Уровень 2: прозрачный слой поверх экрана. Разрешений не требует."
+            return String(localized: "Level 2: a transparent layer above the screen. Needs no permissions.")
         case .capture:
-            return "Уровень 3: читает изображение экрана. Требует разрешения Screen Recording."
+            return String(localized: "Level 3: reads the picture on screen. Needs Screen Recording permission.")
         }
     }
 }
@@ -189,7 +192,7 @@ final class SettingsWindowController {
                 backing: .buffered,
                 defer: false
             )
-            window.title = "Настройки ScreenFilter"
+            window.title = String(localized: "ScreenFilter Settings")
             window.contentView = NSHostingView(rootView: SettingsView(effects: effects))
             window.center()
             window.isReleasedWhenClosed = false

@@ -4,6 +4,11 @@ options:
   deploymentTarget:
     macOS: "13.0"
   createIntermediateGroups: true
+  developmentLanguage: en
+
+# исходный язык интерфейса английский, русский лежит переводом в Localizable.xcstrings
+fileGroups:
+  - Resources/Localizable.xcstrings
 
 packages:
   # запись комбинаций в UI и проверка конфликтов из коробки, под капотом тот же Carbon,
@@ -20,6 +25,7 @@ targets:
       - package: KeyboardShortcuts
     sources:
       - Sources
+      - path: Resources/Localizable.xcstrings
       # folder reference: пресеты попадают в бандл со своей структурой папок
       - path: Resources/Shaders
         type: folder
@@ -36,6 +42,7 @@ targets:
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: WN472X65XN
         PROVISIONING_PROFILE_SPECIFIER: ""
+        SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: ""

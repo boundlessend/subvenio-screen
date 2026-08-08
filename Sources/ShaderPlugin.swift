@@ -66,19 +66,40 @@ enum PluginError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .manifestUnreadable(plugin, underlying):
-            return "\(plugin): манифест не читается - \(underlying.localizedDescription)"
+            return String(
+                format: String(localized: "%@: manifest is unreadable - %@"),
+                plugin, underlying.localizedDescription
+            )
         case let .sourceMissing(plugin):
-            return "\(plugin): рядом с манифестом нет файла shader.metal"
+            return String(
+                format: String(localized: "%@: there is no shader.metal next to the manifest"),
+                plugin
+            )
         case let .gammaSettingsMissing(plugin):
-            return "\(plugin): уровню 1 нужна секция gamma в манифесте"
+            return String(
+                format: String(localized: "%@: level 1 needs a gamma section in the manifest"),
+                plugin
+            )
         case let .invalidGammaTint(plugin, count):
-            return "\(plugin): в tint должно быть 3 значения, а не \(count)"
+            return String(
+                format: String(localized: "%@: tint must hold 3 values, not %lld"),
+                plugin, count
+            )
         case let .unsupportedLevel(plugin, level):
-            return "\(plugin): уровень рендеринга \(level.rawValue) ещё не поддерживается"
+            return String(
+                format: String(localized: "%@: render level %lld is not supported yet"),
+                plugin, level.rawValue
+            )
         case let .tooManyParameters(plugin, count):
-            return "\(plugin): параметров \(count), максимум \(maxShaderParameters)"
+            return String(
+                format: String(localized: "%@: %lld parameters, the maximum is %lld"),
+                plugin, count, maxShaderParameters
+            )
         case let .compilationFailed(plugin, underlying):
-            return "\(plugin): шейдер не компилируется - \(underlying.localizedDescription)"
+            return String(
+                format: String(localized: "%@: shader does not compile - %@"),
+                plugin, underlying.localizedDescription
+            )
         }
     }
 

@@ -149,7 +149,10 @@ final class EffectController: ObservableObject {
 
     func enable() {
         guard let plugin = selectedPlugin else {
-            showAlert(title: "Нет ни одного шейдера", message: shadersDirectory().path)
+            showAlert(
+                title: String(localized: "No shaders found"),
+                message: shadersDirectory().path
+            )
             return
         }
 
@@ -181,7 +184,10 @@ final class EffectController: ObservableObject {
             }
         } catch {
             disable()
-            showAlert(title: "Эффект не запустился", message: error.localizedDescription)
+            showAlert(
+                title: String(localized: "Effect failed to start"),
+                message: error.localizedDescription
+            )
         }
     }
 
@@ -199,11 +205,17 @@ final class EffectController: ObservableObject {
             return screen(for: selectedDisplayID)?.frame
         }
         guard let id = trackedWindowID else {
-            showAlert(title: "Окно не выбрано", message: "Выберите окно в настройках или снимите режим «только под окном».")
+            showAlert(
+                title: String(localized: "No window selected"),
+                message: String(localized: "Pick a window in settings, or turn off window-only mode.")
+            )
             return nil
         }
         guard let frame = windowFrame(id) else {
-            showAlert(title: "Окно недоступно", message: "Выбранное окно закрыто или свёрнуто.")
+            showAlert(
+                title: String(localized: "Window unavailable"),
+                message: String(localized: "The selected window is closed or minimised.")
+            )
             return nil
         }
         return frame
@@ -249,7 +261,7 @@ final class EffectController: ObservableObject {
                     DispatchQueue.main.async {
                         self?.disable()
                         showAlert(
-                            title: "Захват экрана остановлен",
+                            title: String(localized: "Screen capture stopped"),
                             message: error.localizedDescription
                         )
                     }
@@ -258,7 +270,10 @@ final class EffectController: ObservableObject {
                 setEnabled(true)
             } catch {
                 disable()
-                showAlert(title: "Захват экрана не запустился", message: error.localizedDescription)
+                showAlert(
+                    title: String(localized: "Screen capture failed to start"),
+                    message: error.localizedDescription
+                )
             }
         }
     }
@@ -282,18 +297,18 @@ private func ensureScreenRecordingAccess() -> Bool {
 
     NSApp.activate(ignoringOtherApps: true)
     let explanation = NSAlert()
-    explanation.messageText = "Этому эффекту нужно разрешение Screen Recording"
-    explanation.informativeText = """
-    Гамма-таблица умеет менять каналы по отдельности, но не смешивать их, \
-    поэтому честный чёрно-белый обязан читать изображение экрана.
+    explanation.messageText = String(localized: "This effect needs Screen Recording permission")
+    explanation.informativeText = String(localized: """
+    A gamma table can scale channels separately but cannot mix them, so an honest \
+    black and white effect has to read the picture on screen.
 
-    Кадры живут только в памяти до вывода на экран: приложение ничего не пишет \
-    на диск и никуда не передаёт.
+    Frames only live in memory until they are drawn: nothing is written to disk \
+    and nothing leaves your machine.
 
-    Дальше откроется системный диалог, где надо разрешить запись экрана.
-    """
-    explanation.addButton(withTitle: "Продолжить")
-    explanation.addButton(withTitle: "Отмена")
+    The system permission dialog opens next.
+    """)
+    explanation.addButton(withTitle: String(localized: "Continue"))
+    explanation.addButton(withTitle: String(localized: "Cancel"))
     guard explanation.runModal() == .alertFirstButtonReturn else { return false }
 
     if requestScreenRecordingAccess() {
@@ -303,10 +318,10 @@ private func ensureScreenRecordingAccess() -> Bool {
     // системный диалог показывается один раз за установку, дальше только руками
     NSApp.activate(ignoringOtherApps: true)
     let denied = NSAlert()
-    denied.messageText = "Разрешение не выдано"
-    denied.informativeText = "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите ScreenFilter."
-    denied.addButton(withTitle: "Открыть настройки")
-    denied.addButton(withTitle: "Отмена")
+    denied.messageText = String(localized: "Permission not granted")
+    denied.informativeText = String(localized: "Open Privacy & Security → Screen Recording and enable ScreenFilter.")
+    denied.addButton(withTitle: String(localized: "Open Settings"))
+    denied.addButton(withTitle: String(localized: "Cancel"))
     if denied.runModal() == .alertFirstButtonReturn {
         openScreenRecordingSettings()
     }

@@ -1,10 +1,25 @@
 {
-  "name": "Сканлайны",
+  "name": "Scanlines",
   "level": 2,
   "animated": false,
   "parameters": [
-    { "name": "scanlinePeriod", "min": 2, "max": 8, "default": 3 },
-    { "name": "scanlineStrength", "min": 0, "max": 1, "default": 0.22 },
-    { "name": "vignetteStrength", "min": 0, "max": 1, "default": 0.55 }
+    {
+      "name": "scanlinePeriod",
+      "min": 2,
+      "max": 8,
+      "default": 3
+    },
+    {
+      "name": "scanlineStrength",
+      "min": 0,
+      "max": 1,
+      "default": 0.22
+    },
+    {
+      "name": "vignetteStrength",
+      "min": 0,
+      "max": 1,
+      "default": 0.55
+    }
   ]
 }

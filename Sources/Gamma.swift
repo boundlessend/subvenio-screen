@@ -7,7 +7,10 @@ enum GammaError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .applyFailed(code):
-            return "не удалось применить гамма-таблицу, CGError \(code.rawValue)"
+            return String(
+                format: String(localized: "could not apply the gamma table, CGError %lld"),
+                Int(code.rawValue)
+            )
         }
     }
 }

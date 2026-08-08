@@ -1,0 +1,175 @@
+# ScreenFilter
+
+A lightweight macOS menu bar app that lays visual effects over everything on
+screen - scanlines, film grain, VHS, sepia, honest black and white - and
+toggles them with a global hotkey.
+
+Effects are plugins, not a fixed list: a shader is a folder with a manifest and
+a Metal fragment function, and it shows up in the menu without rebuilding the
+app.
+
+Working title. The repository is private for now.
+
+## The constraint that shapes everything
+
+macOS has no public backdrop filter. A transparent window **cannot** transform
+what is underneath it: `CALayer.backgroundFilters` and `compositingFilter` only
+affect the window's own content, and `NSVisualEffectView` does blur and vibrancy
+and nothing else. Without reading pixels you can draw **over** the screen, never
+**through** it.
+
+So ScreenFilter has three rendering levels, and every plugin declares which one
+it needs.
+
+| Level | Mechanism | Can do | Cost | Permission |
+|-------|-----------|--------|------|------------|
+| 1 | `CGSetDisplayTransferByTable` | per-channel work: tint, gamma, inversion, clipping | none, applied in scanout | none |
+| 2 | transparent overlay window + Metal | anything drawn on top: scanlines, vignette, grain, bands | one composited layer | none |
+| 3 | ScreenCaptureKit + Metal | anything that must read the screen: black and white, aberration, bloom | real, scales with resolution and refresh rate | Screen Recording |
+
+Two consequences worth knowing:
+
+- Level 1 lands after compositing, so it covers the cursor, the menu bar and the
+  Dock for free, and cannot be confined to a window.
+- Honest black and white needs level 3. A gamma table scales channels
+  separately and cannot mix them, which is exactly what luminance requires.
+
+## Features
+
+- Menu bar app, no Dock icon, state restored between launches.
+- Global hotkey via Carbon, so no Accessibility permission is required.
+- Shader plugins loaded from disk, with runtime Metal compilation and readable
+  errors for broken ones.
+- Settings window: preset list, per-preset parameter sliders that reach the
+  running effect live, display picker, hotkey recorder, launch at login.
+- Window-scoped mode: the effect follows one window as it moves and resizes.
+- English and Russian interface.
+
+## Requirements
+
+- macOS 13.0 or later
+- Xcode 16 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+  (`brew install xcodegen`)
+
+## Build
+
+The Xcode project is generated and not tracked in git.
+
+```sh
+xcodegen generate
+xcodebuild -project ScreenFilter.xcodeproj -scheme ScreenFilter \
+  -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/ScreenFilter.app
+```
+
+Signing uses a local Apple Development certificate. TCC binds the Screen
+Recording grant to team id plus bundle id, so a real signature keeps the
+permission across rebuilds where an ad-hoc one would lose it on every build.
+Change `CODE_SIGN_IDENTITY` and `DEVELOPMENT_TEAM` in `project.yml` to your own.
+
+## Writing a shader
+
+Plugins live in `~/Library/Application Support/ScreenFilter/Shaders/`. Bundled
+presets are copied there on first launch, folder by folder, and existing folders
+are never overwritten - delete a folder to get the bundled version back.
+
+A plugin is a folder with `manifest.json` and, for levels 2 and 3,
+`shader.metal`:
+
+```json
+{
+  "name": "Scanlines",
+  "level": 2,
+  "animated": false,
+  "parameters": [
+    { "name": "scanlineStrength", "min": 0, "max": 1, "default": 0.22 }
+  ]
+}
+```
+
+`shader.metal` holds only the fragment function. The engine prepends a prelude
+with the vertex function, the uniform struct and shared helpers, and turns
+manifest parameters into named macros, so the shader reads `scanlineStrength`
+rather than `u.params[0]`:
+
+```metal
+fragment float4 overlay_fragment(VertexOut in [[stage_in]],
+                                 constant Uniforms &u [[buffer(0)]]) {
+    float scan = fract(in.position.y / (3.0 * u.scale)) < 0.5 ? scanlineStrength : 0.0;
+    return float4(0.0, 0.0, 0.0, saturate(scan));
+}
+```
+
+Available in every shader:
+
+- `in.uv` - normalised coordinates of this overlay, origin top left
+- `in.position` - pixel coordinates
+- `u.resolution`, `u.scale`, `u.time`
+- `u.sourceOrigin`, `u.sourceSize` - which slice of the display frame this
+  overlay shows, and `overlay_source_uv(in.uv, u)` to sample it
+- `overlay_hash(float2)` for noise, `overlay_sampler` for level 3 textures
+
+Level 2 shaders must output premultiplied alpha. Level 3 shaders receive the
+captured frame as `texture2d<float> source [[texture(0)]]` and return opaque
+pixels.
+
+Level 1 plugins carry a `gamma` section instead of a shader:
+
+```json
+{
+  "name": "Sepia",
+  "level": 1,
+  "gamma": {
+    "tint": [1.0, 0.88, 0.72],
+    "gamma": 1.0,
+    "invert": false,
+    "blackPoint": 0.04,
+    "whitePoint": 0.96
+  }
+}
+```
+
+A manifest that does not parse, a shader that does not compile, or a level that
+is not supported shows up in the menu and in the settings window with the actual
+error text instead of being skipped silently.
+
+## Permissions
+
+- **Screen Recording** is requested lazily, the first time a level 3 preset is
+  turned on, behind an explanation screen of the app's own. Refusing leaves
+  levels 1 and 2 fully working.
+- **Accessibility** is never requested. The global hotkey uses Carbon
+  `RegisterEventHotKey`, and window tracking polls `CGWindowList` - one lookup
+  by window id measures at 0.08 ms, which is 0.5% of a core at 60 Hz.
+
+Frames from screen capture only live in memory until they are drawn. Nothing is
+written to disk and nothing leaves the machine.
+
+## Known limits
+
+- One effect on one display at a time. The target display is selectable, but
+  independent presets on several monitors at once are not implemented.
+- Level 1 cannot be confined to a window, by nature.
+- The overlay window uses `sharingType = .none`, so it is invisible to
+  screenshots and to other apps' screen capture. That also closes half of the
+  level 3 feedback loop.
+- Universal binary is a goal, but only Apple Silicon has actually been tested.
+
+## Layout
+
+```
+Sources/            Swift, one file per concern
+  AppDelegate       menu bar and window wiring
+  EffectController  state, backend selection, persistence
+  Overlay           overlay window, Metal view, renderer
+  Gamma             level 1 backend
+  Capture           level 3 backend
+  ShaderPlugin      manifest model and loader
+  ShaderPipeline    shader prelude and runtime compilation
+  WindowTracking    window-scoped mode
+Resources/Shaders/  bundled presets
+project.yml         XcodeGen project definition
+```
+
+Architecture decisions live in [PLAN.md](PLAN.md), the work breakdown in
+[PRD.md](PRD.md).

@@ -11,11 +11,14 @@ enum CaptureError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .accessDenied:
-            return "нет разрешения Screen Recording"
+            return String(localized: "no Screen Recording permission")
         case .noDisplay:
-            return "ScreenCaptureKit не отдал ни одного дисплея"
+            return String(localized: "ScreenCaptureKit returned no displays")
         case let .textureCacheFailed(code):
-            return "не удалось создать CVMetalTextureCache, код \(code)"
+            return String(
+                format: String(localized: "could not create CVMetalTextureCache, code %lld"),
+                Int(code)
+            )
         }
     }
 }

@@ -1,208 +1,181 @@
-# screen-filter - подготовка к плану
+# ScreenFilter - architecture decisions
 
-Идея: лёгкое macOS-приложение, накладывающее визуальные фильтры/эффекты
-(старый ТВ, ЧБ, VHS и т.п.) поверх всего происходящего на экране,
-с включением/выключением по горячей клавише.
+A lightweight macOS app that lays visual filters and effects (old TV, black and
+white, VHS and so on) over everything on screen, toggled by a hotkey.
 
-Это не план реализации, а зафиксированные решения по архитектуре
-и охвату проекта. План реализации пишется отдельно, на основе этого
-документа.
+This is not an implementation plan but a record of the decisions behind the
+architecture and the scope of the project. The work breakdown lives in
+[PRD.md](PRD.md), the user-facing description in [README.md](README.md).
 
-## Границы проекта
+## Scope
 
-Делаем: наложение визуальных эффектов на экран, переключение хоткеями,
-движок пользовательских шейдеров.
+In: visual effects over the screen, hotkey toggling, a user shader engine.
 
-Не делаем (сознательно, чтобы скоуп не полз):
+Deliberately out, to keep the scope from creeping:
 
-- темы операционной системы, обои, буткрины, скринсейверы;
-- замену или стилизацию Dock и меню-бара;
-- запись видео с наложенным эффектом;
-- виртуальную камеру и фильтры для вебкамеры;
-- лаунчер игр и эмуляторы.
+- OS themes, wallpapers, boot screens, screensavers;
+- replacing or restyling the Dock and the menu bar;
+- recording video with the effect applied;
+- a virtual camera and webcam filters;
+- a game launcher and emulators.
 
-Всё перечисленное умеет RetroMac. Мы делаем только слой эффектов.
+RetroMac does all of the above. We build the effect layer only.
 
-## Архитектура рендеринга
+## Rendering architecture
 
-Ключевое ограничение macOS: прозрачное окно поверх экрана **не может**
-применить фильтр к тому, что под ним. Публичного API «backdrop filter»
-в AppKit нет: `CALayer.backgroundFilters` и `compositingFilter` работают
-только внутри своего окна, `NSVisualEffectView` умеет лишь blur/vibrancy.
-Без захвата пикселей можно только **рисовать поверх**, но не
-**преобразовывать** то, что уже на экране.
+The defining macOS constraint: a transparent window over the screen **cannot**
+apply a filter to what is underneath it. There is no public backdrop filter API
+in AppKit: `CALayer.backgroundFilters` and `compositingFilter` only work inside
+their own window, and `NSVisualEffectView` only does blur and vibrancy. Without
+capturing pixels you can only draw **over** the screen, never **transform** what
+is already on it.
 
-Отсюда три уровня рендеринга, а не два. Каждый шейдер-плагин объявляет,
-на каком уровне он работает.
+Hence three rendering levels rather than two. Every shader plugin declares which
+level it runs on.
 
-### Уровень 1: гамма-LUT (`CGDisplaySetTransferByTable`)
+### Level 1: gamma LUT (`CGDisplaySetTransferByTable`)
 
-- Умеет: поканальные преобразования - цветовой тинт, инверсия, гамма,
-  клиппинг тёмного и светлого.
-- Не умеет: смешивание каналов (ЧБ, сепия), пространственные эффекты.
-- Нагрузка: нулевая, применяется в scanout уже после композитинга.
-- Разрешения: не нужны.
-- Покрывает весь дисплей целиком, включая курсор, меню-бар и Dock.
-- Известное ограничение: не работает с частью DisplayLink-адаптеров
-  и с iPad через Sidecar.
+- Can do: per-channel transforms - colour tint, inversion, gamma, black and
+  white point clipping.
+- Cannot do: channel mixing (black and white, sepia), spatial effects.
+- Cost: none, applied in scanout after compositing.
+- Permissions: none.
+- Covers the entire display including the cursor, the menu bar and the Dock.
+- Known limit: does not work with some DisplayLink adapters or with an iPad over
+  Sidecar.
 
-### Уровень 2: alpha-оверлей (прозрачное окно поверх)
+### Level 2: alpha overlay (a transparent window on top)
 
-- Умеет: всё, что рисуется сверху - сканлайны, виньетка, зерно и шум,
-  цветная плёнка, shadow mask, мерцание.
-- Не умеет: менять то, что под окном.
-- Нагрузка: низкая, один прозрачный слой в композиторе.
-- Разрешения: не нужны.
-- Требования к окну: `ignoresMouseEvents = true`, уровень `.screenSaver`
-  или выше, исключение из захвата экрана (см. защиту от петли).
+- Can do: anything drawn on top - scanlines, vignette, grain and noise, colour
+  film, shadow mask, flicker.
+- Cannot do: change what is underneath the window.
+- Cost: low, one transparent layer in the compositor.
+- Permissions: none.
+- Window requirements: `ignoresMouseEvents = true`, level `.screenSaver` or
+  above, excluded from screen capture (see feedback loop protection).
 
-### Уровень 3: ScreenCaptureKit + Metal
+### Level 3: ScreenCaptureKit + Metal
 
-- Умеет: всё остальное - ЧБ, chromatic aberration, barrel distortion,
-  bloom от яркого контента, phosphor decay.
-- Нагрузка: реальная, растёт с разрешением и частотой обновления.
-- Разрешения: Screen Recording.
-- Обязательное требование: `SCContentFilter` с исключением собственных
-  окон приложения. Иначе оверлей попадает в собственный захват
-  и получается петля обратной связи: чёрный экран или мерцание. Это
-  архитектурное требование, а не деталь реализации.
+- Can do: everything else - black and white, chromatic aberration, barrel
+  distortion, bloom from bright content, phosphor decay.
+- Cost: real, grows with resolution and refresh rate.
+- Permissions: Screen Recording.
+- Hard requirement: `SCContentFilter` excluding the app's own windows.
+  Otherwise the overlay ends up inside its own capture and the result is a
+  feedback loop: a black screen or flicker. This is an architectural
+  requirement, not an implementation detail.
 
-### Важное следствие: уровни комбинируются
+### The important consequence: levels combine
 
-Большинство ретро-эффектов достижимо без захвата экрана. «Старый ТВ» -
-это тинт на уровне 1 плюс сканлайны и виньетка на уровне 2. Уровень 3
-нужен только там, где эффект обязан читать исходные пиксели.
+Most retro effects are reachable without capturing the screen. "Old TV" is a
+tint at level 1 plus scanlines and a vignette at level 2. Level 3 is only needed
+where an effect must read the original pixels.
 
-### Отдельно про чёрно-белый
+### On black and white specifically
 
-Честный ЧБ требует смешивания цветовых каналов, а гамма-LUT поканальный
-и этого не умеет. Варианты:
+Honest black and white requires mixing colour channels, and a gamma LUT is
+per-channel and cannot do it. The options were:
 
-1. уровень 3 (захват экрана) - публично и надёжно, ценой разрешения
-   Screen Recording;
-2. приватный `CGSSetDisplayTransferMatrix` - почти бесплатно и на весь
-   дисплей, но приватный API может отвалиться на любой новой macOS.
+1. level 3 (screen capture) - public and reliable, at the cost of the Screen
+   Recording permission;
+2. the private `CGSSetDisplayTransferMatrix` - nearly free and display-wide, but
+   a private API can break on any new macOS.
 
-По умолчанию идём первым путём. Второй допустим как опциональный
-«быстрый ЧБ» с явным предупреждением в UI, но не как основа.
+We took the first path. The second stays acceptable as an optional "fast black
+and white" with an explicit warning in the UI, but never as the foundation.
 
-## Принятые решения
+## Decisions
 
-1. **Назначение и охват.** Сейчас приватный репозиторий, для личного
-   использования. Публикация в Mac App Store не планируется. Позже
-   репозиторий станет открытым.
-2. **Область применения эффекта.** Трёхуровневая схема:
-   - один глобальный хоткей: эффект на все подключённые мониторы;
-   - дополнительные хоткеи, настраиваемые на отдельный монитор;
-   - отдельный режим в настройках: эффект только в области под
-     конкретным окном.
-3. **Каталог эффектов.** Не фиксированный список пресетов, а движок
-   с поддержкой пользовательских шейдеров как плагинов. Готовые фильтры
-   (ЧБ, старый ТВ) - первые пресеты поверх движка, а не хардкод.
-4. **Формат шейдеров.** Только Metal (MSL) на старте. CIKernel на
-   современных macOS сам компилируется в Metal, а MSL покрывает всё, что
-   умеет CIKernel, плюс геометрию. Двойной загрузчик плагинов с первого
-   дня не окупается. Поддержку CIKernel добавляем тогда, когда появится
-   конкретный шейдер, который на нём заметно проще.
-5. **UI и настройка.** Иконка в меню-баре для быстрого переключения
-   пресетов плюс отдельное окно настроек для хоткеев, шейдеров
-   и per-monitor / per-window правил.
-6. **Курсор и системные элементы.** Настраиваемая опция per preset.
-   Важная оговорка: на уровне 3 нарисованный поверх курсор отстаёт
-   на всю задержку пайплайна захват - шейдер - вывод, и это ощущается
-   как лаг мыши. Опция сопровождается честным предупреждением в UI;
-   значение по умолчанию - системный курсор поверх эффекта. На уровне 1
-   курсор попадает под эффект бесплатно и без задержки.
-7. **Персистентность.** Последний включённый эффект и его настройки
-   запоминаются между перезапусками (`UserDefaults`, стоит копейки).
-8. **Дифференциация от аналогов.** Осознанный «свой велосипед»: ценность
-   в контроле над кодом и в обучении, а не в уникальной фиче, которой
-   нет у RetroMac / RetroVisor / Black Light 3.
-9. **Распространение.** Нотаризация Apple не нужна. Решение принято,
-   к вопросу не возвращаемся.
-10. **Бюджет нагрузки.** Фиксированного процента CPU/GPU заранее нет.
-    Смотрим по ситуации, оптимизируем отдельно, если конкретный
-    уровень или шейдер окажется тяжёлым. Известные рычаги: понижение
-    частоты захвата, масштабирование буфера, пропуск кадров при
-    статичном экране.
+1. **Purpose and reach.** A private repository for personal use for now. No Mac
+   App Store. The repository goes public later.
+2. **Effect area.** Three tiers:
+   - one global hotkey: effect on every connected display;
+   - extra hotkeys, configurable per display;
+   - a separate mode: effect only in the area under a specific window.
+3. **Effect catalogue.** Not a fixed list of presets but an engine with support
+   for user shaders as plugins. The ready-made filters (black and white, old TV)
+   are the first presets on top of the engine, not hardcoded features.
+4. **Shader format.** Metal (MSL) only to start. On current macOS a CIKernel
+   compiles down to Metal anyway, and MSL covers everything CIKernel does plus
+   geometry. A double plugin loader does not pay for itself on day one.
+   CIKernel support arrives when a concrete shader turns out to be markedly
+   simpler in it.
+5. **UI and configuration.** A menu bar icon for quickly switching presets plus
+   a separate settings window for hotkeys, shaders and per-display and
+   per-window rules.
+6. **Cursor and system elements.** A configurable option per preset. The
+   important caveat: at level 3 a cursor drawn inside the frame lags by the
+   whole capture-shader-output delay, and that reads as a laggy mouse. The
+   option carries an honest warning in the UI; the default is the system cursor
+   above the effect. At level 1 the cursor falls under the effect for free and
+   without delay.
+7. **Persistence.** The last enabled effect and its settings survive restarts
+   (`UserDefaults`, costs nothing).
+8. **Difference from the alternatives.** A deliberate reinvention: the value is
+   in owning the code and in learning, not in a feature RetroMac, RetroVisor or
+   Black Light 3 lack.
+9. **Distribution.** Apple notarisation is not needed. Decided, not revisited.
+10. **Load budget.** No fixed CPU/GPU percentage up front. We look at the
+    situation and optimise separately if a particular level or shader turns out
+    to be heavy. Known levers: lowering the capture rate, scaling the buffer,
+    skipping frames on a static screen.
 
-## Разрешения системы
+## System permissions
 
-Проект должен требовать минимум разрешений, поэтому выбор API здесь
-не свободный:
+The project should require the minimum of permissions, so the choice of API is
+not free here:
 
-- **Screen Recording** - только для уровня 3. Запрашивается лениво,
-  при первом включении такого шейдера, а не при старте приложения.
-  Перед системным диалогом Privacy & Security показываем собственный
-  экран онбординга с объяснением, зачем это нужно.
-- **Accessibility** - стараемся не требовать вовсе:
-  - глобальные хоткеи делаем через Carbon `RegisterEventHotKey`, который
-    Accessibility не требует. `NSEvent.addGlobalMonitorForEvents`
-    требует, поэтому его не используем;
-  - режим «под конкретным окном» точное отслеживание чужого окна берёт
-    из Accessibility, но есть обходной путь через `SCShareableContent`
-    с поллингом позиции (без разрешения, ценой задержки). Окончательный
-    выбор делаем при реализации этого режима.
+- **Screen Recording** - only for level 3. Requested lazily, on the first use of
+  such a shader rather than at launch. Before the system Privacy & Security
+  dialog we show an onboarding screen of our own explaining why it is needed.
+- **Accessibility** - avoided entirely:
+  - global hotkeys go through Carbon `RegisterEventHotKey`, which needs no
+    Accessibility. `NSEvent.addGlobalMonitorForEvents` does, so we do not use
+    it;
+  - the "under a specific window" mode tracks a foreign window by polling
+    `CGWindowList`. Measured at 0.08 ms per lookup by window id, which is 0.5%
+    of a core at 60 Hz - cheaper than asking for another permission.
 
-## Стек
+## Stack
 
-- Swift, AppKit для оверлейных окон и меню-бара, SwiftUI для окна
-  настроек.
-- Системные фреймворки по умолчанию: Core Graphics (гамма-LUT), Metal,
-  ScreenCaptureKit, Carbon (хоткеи).
-- Точечные сторонние зависимости допускаются, если закрывают заметный
-  кусок работы. Первый очевидный кандидат:
-  [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) -
-  готовая запись комбинаций в UI и проверка конфликтов, под капотом тот
-  же Carbon, Accessibility не тянет.
-- Целевая архитектура: universal binary (Apple Silicon + Intel). Код
-  пишем переносимо, но см. раздел «Отложено» про проверку на Intel.
+- Swift, AppKit for the overlay windows and the menu bar, SwiftUI for the
+  settings window.
+- System frameworks by default: Core Graphics (gamma LUT), Metal,
+  ScreenCaptureKit, ServiceManagement (launch at login).
+- Targeted third-party dependencies are acceptable when they cover a meaningful
+  chunk of work. In use:
+  [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) - it
+  records combinations in the UI and checks conflicts out of the box, and uses
+  Carbon underneath, so it pulls in no Accessibility requirement.
+- Target architecture: universal binary (Apple Silicon + Intel). The code is
+  written portably, but see "Deferred" about testing on Intel.
 
-## Критерии готовности
+## Definition of done for the MVP
 
-**MVP считается готовым, когда:**
+The MVP was considered done when:
 
-- приложение живёт в меню-баре;
-- один шейдер уровня 2 (сканлайны плюс виньетка) накладывается
-  на главный монитор;
-- один глобальный хоткей включает и выключает эффект;
-- сквозь оверлей можно кликать: мышь и клавиатура уходят в приложения
-  под ним;
-- после перезапуска приложения состояние восстанавливается.
+- the app lives in the menu bar;
+- one level 2 shader (scanlines plus vignette) lands on the main display;
+- one global hotkey turns the effect on and off;
+- clicks pass through the overlay: mouse and keyboard reach the apps below;
+- state is restored after a restart.
 
-Проверка: нажать хоткей, увидеть эффект, поработать в другом приложении
-сквозь него, нажать хоткей ещё раз, убедиться что эффект снялся
-полностью и экран вернулся в исходное состояние.
+Check: press the hotkey, see the effect, work in another app through it, press
+the hotkey again, confirm the effect is gone and the screen is back to normal.
 
-## Порядок работ
+## Deferred
 
-1. **MVP** по критериям выше. Один захардкоженный шейдер, никакого
-   движка плагинов.
-2. **Движок плагинов**: загрузка MSL-шейдеров из папки, объявление
-   уровня рендеринга, два-три пресета.
-3. **Уровень 1** (гамма-LUT) как второй бэкенд, абстракция над уровнями.
-4. **Уровень 3** (ScreenCaptureKit + Metal): захват, защита от петли,
-   онбординг разрешения, честный ЧБ.
-5. **Окно настроек**: хоткеи, выбор пресетов, per-monitor правила.
-6. **Режим под конкретным окном.**
-7. **Автозапуск при старте macOS.** Вынесен в конец сознательно:
-   `SMAppService` требует macOS 13+, на более старых нужен helper-бандл
-   и возня с подписью, а на работоспособность ядра это не влияет никак.
+Questions consciously postponed. Not forgotten, just not needed yet.
 
-## Отложено
-
-Вопросы, решение по которым сознательно откладывается. Не забыты,
-просто не нужны прямо сейчас.
-
-1. **Версионирование и релизный ритм.** Вернуться перед открытием
-   репозитория.
-2. **Проверка на реальном Intel-маке.** Universal binary заявлен как
-   цель, но без Intel-машины совместимость непроверяема. Решить, что
-   честно писать в README: либо найти на чём тестировать, либо
-   заявлять только Apple Silicon.
-3. **Мониторы с разным масштабом и частотой обновления.** Retina
-   и не-Retina рядом, 60 Гц и 120 Гц рядом - каждому нужен свой
-   рендер-таргет и свой тайминг. Влияет на архитектуру уровня 2 и 3,
-   разбираемся при реализации per-monitor режима.
-4. **Имя проекта.** `screen-filter` - рабочее название. Выбрать
-   настоящее до открытия исходников.
+1. **Versioning and release cadence.** Revisit before making the repository
+   public.
+2. **Testing on a real Intel Mac.** A universal binary is stated as a goal, but
+   without an Intel machine the compatibility is unverifiable. Decide what to
+   honestly claim in the README: either find something to test on, or claim
+   Apple Silicon only.
+3. **Displays with different scale and refresh rate.** Retina next to non-Retina,
+   60 Hz next to 120 Hz - each needs its own render target and its own timing.
+   Affects the architecture of levels 2 and 3; to be worked out when independent
+   presets per display are implemented.
+4. **Project name.** `screen-filter` is a working title. Pick a real one before
+   opening the sources.

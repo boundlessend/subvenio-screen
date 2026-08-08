@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showLoadError(_ sender: NSMenuItem) {
         guard let message = sender.representedObject as? String else { return }
-        showAlert(title: "Шейдер не загрузился", message: message)
+        showAlert(title: String(localized: "Shader failed to load"), message: message)
     }
 
     @objc private func openSettings() {
@@ -64,7 +64,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
 
         let toggle = NSMenuItem(
-            title: effects.isEnabled ? "Выключить эффект" : "Включить эффект",
+            title: effects.isEnabled
+                ? String(localized: "Turn Effect Off")
+                : String(localized: "Turn Effect On"),
             action: #selector(toggleEffect),
             keyEquivalent: ""
         )
@@ -73,7 +75,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let shortcut = KeyboardShortcuts.getShortcut(for: .toggleEffect)
         let hint = NSMenuItem(
-            title: shortcut.map { "Хоткей: \($0)" } ?? "Хоткей не назначен",
+            title: shortcut.map {
+                String(format: String(localized: "Hotkey: %@"), $0.description)
+            } ?? String(localized: "No hotkey assigned"),
             action: nil,
             keyEquivalent: ""
         )
@@ -109,7 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(
-            title: "Настройки…",
+            title: String(localized: "Settings…"),
             action: #selector(openSettings),
             keyEquivalent: ","
         )
@@ -117,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(settingsItem)
 
         menu.addItem(
-            withTitle: "Выход",
+            withTitle: String(localized: "Quit"),
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )

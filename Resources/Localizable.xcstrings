@@ -1,0 +1,600 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "Turn Effect On": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включить эффект"
+          }
+        }
+      }
+    },
+    "Turn Effect Off": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выключить эффект"
+          }
+        }
+      }
+    },
+    "Hotkey: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хоткей: %@"
+          }
+        }
+      }
+    },
+    "No hotkey assigned": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хоткей не назначен"
+          }
+        }
+      }
+    },
+    "Settings…": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки…"
+          }
+        }
+      }
+    },
+    "Quit": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выход"
+          }
+        }
+      }
+    },
+    "Shader failed to load": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шейдер не загрузился"
+          }
+        }
+      }
+    },
+    "No shaders found": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет ни одного шейдера"
+          }
+        }
+      }
+    },
+    "Effect failed to start": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Эффект не запустился"
+          }
+        }
+      }
+    },
+    "No window selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Окно не выбрано"
+          }
+        }
+      }
+    },
+    "Pick a window in settings, or turn off window-only mode.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите окно в настройках или снимите режим «только под окном»."
+          }
+        }
+      }
+    },
+    "Window unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Окно недоступно"
+          }
+        }
+      }
+    },
+    "The selected window is closed or minimised.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбранное окно закрыто или свёрнуто."
+          }
+        }
+      }
+    },
+    "Screen capture stopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Захват экрана остановлен"
+          }
+        }
+      }
+    },
+    "Screen capture failed to start": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Захват экрана не запустился"
+          }
+        }
+      }
+    },
+    "This effect needs Screen Recording permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этому эффекту нужно разрешение Screen Recording"
+          }
+        }
+      }
+    },
+    "A gamma table can scale channels separately but cannot mix them, so an honest black and white effect has to read the picture on screen.\n\nFrames only live in memory until they are drawn: nothing is written to disk and nothing leaves your machine.\n\nThe system permission dialog opens next.\n": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гамма-таблица умеет менять каналы по отдельности, но не смешивать их, поэтому честный чёрно-белый обязан читать изображение экрана.\n\nКадры живут только в памяти до вывода на экран: приложение ничего не пишет на диск и никуда не передаёт.\n\nДальше откроется системный диалог, где надо разрешить запись экрана.\n"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продолжить"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отмена"
+          }
+        }
+      }
+    },
+    "Permission not granted": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешение не выдано"
+          }
+        }
+      }
+    },
+    "Open Privacy & Security → Screen Recording and enable ScreenFilter.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите ScreenFilter."
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть настройки"
+          }
+        }
+      }
+    },
+    "lvl %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ур. %lld"
+          }
+        }
+      }
+    },
+    "Open shaders folder": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть папку шейдеров"
+          }
+        }
+      }
+    },
+    "No presets available": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет ни одного пресета"
+          }
+        }
+      }
+    },
+    "This preset has no parameters: level 1 is configured by the gamma section of its manifest.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У этого пресета нет параметров: уровень 1 настраивается секцией gamma в манифесте."
+          }
+        }
+      }
+    },
+    "Reset to defaults": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сбросить к умолчаниям"
+          }
+        }
+      }
+    },
+    "Apply the effect to the cursor": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Применять эффект к курсору"
+          }
+        }
+      }
+    },
+    "The cursor moves inside the captured frame and lags by the whole pipeline delay, which reads as a laggy mouse.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Курсор попадёт внутрь кадра и будет отставать на всю задержку захвата: это ощущается как лаг мыши."
+          }
+        }
+      }
+    },
+    "Display:": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Монитор:"
+          }
+        }
+      }
+    },
+    "Only under the selected window": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только под выбранным окном"
+          }
+        }
+      }
+    },
+    "Level 1 rewrites the table of the whole display and cannot be confined to a window, so this preset stays full-screen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уровень 1 меняет таблицу всего дисплея, областью окна его ограничить нельзя: этот пресет останется на весь экран."
+          }
+        }
+      }
+    },
+    "Window:": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Окно:"
+          }
+        }
+      }
+    },
+    "none": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "не выбрано"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить"
+          }
+        }
+      }
+    },
+    "Toggle effect:": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переключить эффект:"
+          }
+        }
+      }
+    },
+    "Launch at login": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускать при входе в систему"
+          }
+        }
+      }
+    },
+    "Could not change launch at login": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось изменить автозапуск"
+          }
+        }
+      }
+    },
+    "Failed to load": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не загрузились"
+          }
+        }
+      }
+    },
+    "ScreenFilter Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки ScreenFilter"
+          }
+        }
+      }
+    },
+    "Level 1: gamma table. Covers the cursor, the menu bar and the Dock, and costs nothing.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уровень 1: гамма-таблица. Покрывает курсор, меню-бар и Dock, ничего не стоит по нагрузке."
+          }
+        }
+      }
+    },
+    "Level 2: a transparent layer above the screen. Needs no permissions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уровень 2: прозрачный слой поверх экрана. Разрешений не требует."
+          }
+        }
+      }
+    },
+    "Level 3: reads the picture on screen. Needs Screen Recording permission.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Уровень 3: читает изображение экрана. Требует разрешения Screen Recording."
+          }
+        }
+      }
+    },
+    "%@: manifest is unreadable - %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: манифест не читается - %@"
+          }
+        }
+      }
+    },
+    "%@: there is no shader.metal next to the manifest": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: рядом с манифестом нет файла shader.metal"
+          }
+        }
+      }
+    },
+    "%@: level 1 needs a gamma section in the manifest": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: уровню 1 нужна секция gamma в манифесте"
+          }
+        }
+      }
+    },
+    "%@: tint must hold 3 values, not %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: в tint должно быть 3 значения, а не %lld"
+          }
+        }
+      }
+    },
+    "%@: render level %lld is not supported yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: уровень рендеринга %lld ещё не поддерживается"
+          }
+        }
+      }
+    },
+    "%@: %lld parameters, the maximum is %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: параметров %lld, максимум %lld"
+          }
+        }
+      }
+    },
+    "%@: shader does not compile - %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: шейдер не компилируется - %@"
+          }
+        }
+      }
+    },
+    "could not apply the gamma table, CGError %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "не удалось применить гамма-таблицу, CGError %lld"
+          }
+        }
+      }
+    },
+    "no Screen Recording permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "нет разрешения Screen Recording"
+          }
+        }
+      }
+    },
+    "ScreenCaptureKit returned no displays": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ScreenCaptureKit не отдал ни одного дисплея"
+          }
+        }
+      }
+    },
+    "could not create CVMetalTextureCache, code %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "не удалось создать CVMetalTextureCache, код %lld"
+          }
+        }
+      }
+    }
+  }
+}
