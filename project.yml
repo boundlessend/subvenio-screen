@@ -29,6 +29,7 @@ targets:
       - Sources
       - path: Resources/Localizable.xcstrings
       - path: Resources/PrivacyInfo.xcprivacy
+      - path: Resources/Assets.xcassets
       # folder reference: пресеты попадают в бандл со своей структурой папок
       - path: Resources/Shaders
         type: folder
@@ -49,6 +50,7 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         ARCHS: "$(ARCHS_STANDARD)"
