@@ -238,6 +238,9 @@ final class OverlayController {
     private var startTime: CFTimeInterval = 0
     private var currentPlugin: ShaderPlugin?
     private var currentDisplayID: CGDirectDisplayID = CGMainDisplayID()
+    /// эффект накрывает весь дисплей, а не рамку чужого окна: только такой оверлей
+    /// подстраивается сам, когда у дисплея меняется разрешение или масштаб
+    private var coversWholeDisplay = false
     private var capture: CaptureController?
     private var captureRequest: CaptureRequest?
     private var captureProfile: DisplayProfile?
@@ -295,6 +298,7 @@ final class OverlayController {
     func updateFrame(_ frame: CGRect) {
         guard let window, let view = window.contentView as? OverlayView,
               let target = screen(for: currentDisplayID) else { return }
+        coversWholeDisplay = frame == target.frame
         window.setFrame(frame, display: true)
         view.sourceRect = sourceRect(for: frame, on: target)
         if !isTicking, capture == nil {
@@ -441,6 +445,7 @@ final class OverlayController {
             throw RenderError.noDisplay
         }
         let window = self.window ?? OverlayWindow(screen: target, renderer: renderer)
+        coversWholeDisplay = frame == target.frame
         window.setFrame(frame, display: true)
 
         guard let view = window.contentView as? OverlayView else {
@@ -455,6 +460,9 @@ final class OverlayController {
         window.orderFrontRegardless()
         self.window = window
         startTime = CACurrentMediaTime()
+        Log.overlay.info(
+            "overlay shown: \(plugin.identifier, privacy: .public) at \(String(describing: frame), privacy: .public), screen \(String(describing: target.frame), privacy: .public)"
+        )
         return view
     }
 
@@ -511,9 +519,14 @@ final class OverlayController {
         displayLink = nil
     }
 
+    /// время шейдера идёт по кругу раз в сутки: дальше оно перестаёт помещаться
+    /// во float32 без потери шага между кадрами, а скачок фазы раз в сутки не виден
+    private static let timeWrap: CFTimeInterval = 86_400
+
     @objc private func tick() {
         guard let view = window?.contentView as? OverlayView else { return }
-        view.time = CACurrentMediaTime() - startTime
+        view.time = (CACurrentMediaTime() - startTime)
+            .truncatingRemainder(dividingBy: Self.timeWrap)
         view.render(source: nil)
     }
 
@@ -521,8 +534,12 @@ final class OverlayController {
 
     @objc private func screenParametersDidChange() {
         guard let window, let target = screen(for: currentDisplayID) else { return }
-        // рамку окна под эффектом пересчитает трекер, здесь только полноэкранный случай
-        if window.frame.size == target.frame.size {
+        Log.overlay.info(
+            "screen parameters changed: window \(String(describing: window.frame), privacy: .public), screen \(String(describing: target.frame), privacy: .public)"
+        )
+        // рамку окна под чужим окном пересчитает трекер, здесь только полноэкранный случай.
+        // сравнивать размеры бесполезно: они расходятся ровно тогда, когда подстроиться и надо
+        if coversWholeDisplay, window.frame != target.frame {
             window.setFrame(target.frame, display: true)
             (window.contentView as? OverlayView)?.render(source: nil)
         }
@@ -535,6 +552,7 @@ final class OverlayController {
 
     @objc private func pause() {
         guard !isPaused, currentPlugin != nil else { return }
+        Log.overlay.info("pausing: screen asleep")
         isPaused = true
         stopTicking()
         stopCapture()
@@ -542,6 +560,9 @@ final class OverlayController {
 
     @objc private func resume() {
         guard isPaused else { return }
+        Log.overlay.info(
+            "resuming: window \(String(describing: self.window?.frame), privacy: .public)"
+        )
         isPaused = false
         setAnimating(currentPlugin?.isAnimated ?? false)
         restartCapture()

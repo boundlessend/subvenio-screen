@@ -51,9 +51,17 @@ vertex VertexOut overlay_vertex(uint vid [[vertex_id]]) {
 // сэмплер для уровня 3: плагин читает им кадр из source
 constexpr sampler overlay_sampler(coord::normalized, address::clamp_to_edge, filter::linear);
 
-// дешёвый хеш-шум для зерна и полос
+// целочисленный хеш-шум для зерна и полос.
+// классический fract(sin(dot(...))) здесь не годится: шейдеры подмешивают в аргумент
+// время, sin в Metal теряет точность на больших числах, и через четыре минуты работы
+// шум вырождался в ровную заливку - зерно пропадало прямо на экране
 inline float overlay_hash(float2 p) {
-    return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+    uint2 q = uint2(int2(floor(p)));
+    uint h = q.x * 73856093u ^ q.y * 19349663u;
+    h ^= h >> 13;
+    h *= 0x5bd1e995u;
+    h ^= h >> 15;
+    return float(h) * (1.0 / 4294967296.0);
 }
 
 // координата в кадре захвата: на весь экран это те же uv, под окном сдвиг и масштаб
