@@ -150,6 +150,44 @@ final class UniformLayoutTests: XCTestCase {
     }
 }
 
+/// доля кадра дисплея, которую занимает оверлей. ошибка здесь выглядит как съехавший
+/// эффект в оконном режиме, а такое глазами ловится плохо
+final class SourceRectTests: XCTestCase {
+    private let display = CGRect(x: 0, y: 0, width: 1000, height: 500)
+
+    func testWholeDisplayIsTheWholeFrame() {
+        XCTAssertEqual(sourceRect(for: display, in: display), CGRect(x: 0, y: 0, width: 1, height: 1))
+    }
+
+    /// CGWindowList считает Y вниз от верха, Cocoa вверх от низа: перепутанное
+    /// направление уводит эффект в противоположную половину экрана
+    func testTopLeftQuarterLandsAtTheOrigin() {
+        let window = CGRect(x: 0, y: 250, width: 500, height: 250)
+        XCTAssertEqual(
+            sourceRect(for: window, in: display),
+            CGRect(x: 0, y: 0, width: 0.5, height: 0.5)
+        )
+    }
+
+    func testBottomRightQuarterLandsAtTheFarCorner() {
+        let window = CGRect(x: 500, y: 0, width: 500, height: 250)
+        XCTAssertEqual(
+            sourceRect(for: window, in: display),
+            CGRect(x: 0.5, y: 0.5, width: 0.5, height: 0.5)
+        )
+    }
+
+    /// у второго монитора начало координат смещено, а доли считаются от его собственной рамки
+    func testSecondDisplayIsMeasuredFromItsOwnBounds() {
+        let second = CGRect(x: -1600, y: 200, width: 1600, height: 1000)
+        let window = CGRect(x: -1200, y: 700, width: 800, height: 500)
+        XCTAssertEqual(
+            sourceRect(for: window, in: second),
+            CGRect(x: 0.25, y: 0, width: 0.5, height: 0.5)
+        )
+    }
+}
+
 final class VersionComparisonTests: XCTestCase {
     func testTagPrefixAndOrderOfComponents() {
         XCTAssertTrue(isVersion("v1.2.0", newerThan: "1.1.9"))

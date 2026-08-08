@@ -82,12 +82,9 @@ final class EffectController: ObservableObject {
 
     private let overlay = OverlayController()
     private let gamma = GammaController()
+    private let settings = PluginSettings()
     private var tracker: WindowTracker?
     private var watcher: PluginWatcher?
-    /// значения слайдеров живут в памяти, на диск уезжают пачкой: перетаскивание
-    /// ползунка иначе пишет UserDefaults шестьдесят раз в секунду
-    private var pendingParameters: [String: [Float]] = [:]
-    private var parameterFlush: Timer?
     /// запуск уровня 3 асинхронный: без этого второй хоткей поднимает второй поток захвата
     private var isStarting = false
 
@@ -140,28 +137,15 @@ final class EffectController: ObservableObject {
 
         let live = Set(plugins.map(\.identifier))
         overlay.forgetPipelines(keeping: live)
-        forgetSettings(outside: live)
+        settings.forget(outside: live)
     }
 
-    /// значения параметров: пользовательские из UserDefaults, иначе умолчания манифеста
     func parameters(for plugin: ShaderPlugin) -> [Float] {
-        if let pending = pendingParameters[plugin.identifier] {
-            return pending
-        }
-        let stored = UserDefaults.standard.array(forKey: parametersKey(plugin)) as? [Double]
-        guard let stored, stored.count == plugin.defaultParameters.count else {
-            return plugin.defaultParameters
-        }
-        return stored.map(Float.init)
+        settings.parameters(for: plugin)
     }
 
     func setParameter(_ value: Float, at index: Int, for plugin: ShaderPlugin) {
-        var values = parameters(for: plugin)
-        guard values.indices.contains(index) else { return }
-        values[index] = value
-        pendingParameters[plugin.identifier] = values
-        scheduleParameterFlush()
-
+        guard let values = settings.setParameter(value, at: index, for: plugin) else { return }
         if isEnabled, plugin.identifier == selectedPlugin?.identifier {
             overlay.updateParameters(values)
         }
@@ -169,58 +153,24 @@ final class EffectController: ObservableObject {
     }
 
     func resetParameters(for plugin: ShaderPlugin) {
-        pendingParameters[plugin.identifier] = nil
-        UserDefaults.standard.removeObject(forKey: parametersKey(plugin))
+        settings.resetParameters(for: plugin)
         if isEnabled, plugin.identifier == selectedPlugin?.identifier {
             overlay.updateParameters(plugin.defaultParameters)
         }
         objectWillChange.send()
     }
 
-    private func scheduleParameterFlush() {
-        guard parameterFlush == nil else { return }
-        // таймер главного runloop зовёт замыкание на главном потоке, но типом это не выражено
-        let timer = Timer(timeInterval: 0.5, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.flushParameters()
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        parameterFlush = timer
-    }
-
+    /// вызывается при выходе: значения ползунков лежат в памяти до ближайшей пачки
     func flushParameters() {
-        parameterFlush?.invalidate()
-        parameterFlush = nil
-        for (identifier, values) in pendingParameters {
-            UserDefaults.standard.set(values.map(Double.init), forKey: "params.\(identifier)")
-        }
-        pendingParameters.removeAll()
+        settings.flush()
     }
 
-    private func parametersKey(_ plugin: ShaderPlugin) -> String {
-        "params.\(plugin.identifier)"
-    }
-
-    /// пресет удалили с диска: его настройки больше некому читать
-    private func forgetSettings(outside live: Set<String>) {
-        let defaults = UserDefaults.standard
-        for key in defaults.dictionaryRepresentation().keys {
-            guard let identifier = key.split(separator: ".", maxSplits: 1).last.map(String.init),
-                  key.hasPrefix("params.") || key.hasPrefix("cursor."),
-                  !live.contains(identifier) else { continue }
-            defaults.removeObject(forKey: key)
-        }
-    }
-
-    /// курсор внутри кадра на уровне 3 отстаёт на всю задержку пайплайна,
-    /// поэтому по умолчанию его рисует система поверх эффекта
     func showsCursor(for plugin: ShaderPlugin) -> Bool {
-        UserDefaults.standard.bool(forKey: "cursor.\(plugin.identifier)")
+        settings.showsCursor(for: plugin)
     }
 
     func setShowsCursor(_ value: Bool, for plugin: ShaderPlugin) {
-        UserDefaults.standard.set(value, forKey: "cursor.\(plugin.identifier)")
+        settings.setShowsCursor(value, for: plugin)
         objectWillChange.send()
         if isEnabled, plugin.identifier == selectedPlugin?.identifier {
             enable()
@@ -436,58 +386,4 @@ final class EffectController: ObservableObject {
             }
         }
     }
-}
-
-/// пользователь сам попросил показать подробности, поэтому здесь модальное окно уместно
-func showAlert(title: String, message: String) {
-    // без активации окно алерта у LSUIElement-приложения уедет за чужие окна
-    activateApp()
-    let alert = NSAlert()
-    alert.messageText = title
-    alert.informativeText = message
-    alert.alertStyle = .warning
-    alert.runModal()
-}
-
-func activateApp() {
-    NSApp.activate()
-}
-
-/// свой экран объяснения до системного диалога, как договорились в PLAN.md
-private func ensureScreenRecordingAccess() -> Bool {
-    if hasScreenRecordingAccess() {
-        return true
-    }
-
-    activateApp()
-    let explanation = NSAlert()
-    explanation.messageText = String(localized: "This effect needs Screen Recording permission")
-    explanation.informativeText = String(localized: """
-    A gamma table can scale channels separately but cannot mix them, so an honest \
-    black and white effect has to read the picture on screen.
-
-    Frames only live in memory until they are drawn: nothing is written to disk \
-    and nothing leaves your machine.
-
-    The system permission dialog opens next.
-    """)
-    explanation.addButton(withTitle: String(localized: "Continue"))
-    explanation.addButton(withTitle: String(localized: "Cancel"))
-    guard explanation.runModal() == .alertFirstButtonReturn else { return false }
-
-    if requestScreenRecordingAccess() {
-        return true
-    }
-
-    // системный диалог показывается один раз за установку, дальше только руками
-    activateApp()
-    let denied = NSAlert()
-    denied.messageText = String(localized: "Permission not granted")
-    denied.informativeText = String(localized: "Open Privacy & Security → Screen Recording and enable Subvenio Screen.")
-    denied.addButton(withTitle: String(localized: "Open Settings"))
-    denied.addButton(withTitle: String(localized: "Cancel"))
-    if denied.runModal() == .alertFirstButtonReturn {
-        openScreenRecordingSettings()
-    }
-    return false
 }

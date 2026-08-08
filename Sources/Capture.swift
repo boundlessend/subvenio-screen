@@ -75,6 +75,65 @@ struct CapturedFrame: @unchecked Sendable {
     }
 }
 
+/// то, чем был запущен захват: хранится, чтобы пережить смену разрешения и сон экрана
+struct CaptureRequest {
+    let plugin: ShaderPlugin
+    let parameters: [Float]
+    let displayID: CGDirectDisplayID
+    let frame: CGRect
+    let showsCursor: Bool
+    let quality: CaptureQuality
+    let onStop: @MainActor @Sendable (Error) -> Void
+
+    func with(frame: CGRect) -> CaptureRequest {
+        CaptureRequest(
+            plugin: plugin,
+            parameters: parameters,
+            displayID: displayID,
+            frame: frame,
+            showsCursor: showsCursor,
+            quality: quality,
+            onStop: onStop
+        )
+    }
+}
+
+/// то в дисплее, что задаётся при старте потока и не меняется на лету
+struct DisplayProfile: Equatable {
+    let size: CGSize
+    let scale: CGFloat
+    let framesPerSecond: Int
+}
+
+/// собранный, но ещё не запущенный поток захвата вместе с параметрами дисплея
+struct CaptureSetup {
+    let controller: CaptureController
+    let profile: DisplayProfile
+}
+
+/// доставляет кадры с очереди захвата на главный поток.
+/// отдельный тип, потому что колбэк ScreenCaptureKit приходит вне главного потока,
+/// а вью изолировано главным актором
+final class FrameSink: @unchecked Sendable {
+    private weak var view: OverlayView?
+
+    init(view: OverlayView) {
+        self.view = view
+    }
+
+    func deliver(_ frame: CapturedFrame) {
+        // ponytail: без пропуска кадров. рисование одного треугольника дешевле
+        // кадра дисплея, начнёт отставать - появится флаг занятости.
+        // frame захватывается замыканием целиком: его буферы должны дожить до отрисовки.
+        // assumeIsolated вместо Task: очередь главного потока сохраняет порядок кадров
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                self.view?.render(source: frame.texture)
+            }
+        }
+    }
+}
+
 /// бэкенд уровня 3: захват экрана в текстуру Metal без копирования на CPU.
 ///
 /// потоковый контракт, он же причина `@unchecked Sendable`: изменяемое состояние

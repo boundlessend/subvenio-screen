@@ -180,21 +180,14 @@ final class PreviewView: NSView {
               let scale = window?.backingScaleFactor,
               bounds.width > 0, bounds.height > 0 else { return }
 
-        let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
-        if metalLayer.drawableSize != size {
-            metalLayer.contentsScale = scale
-            metalLayer.drawableSize = size
-        }
         renderer.draw(
             in: metalLayer,
             pipeline: pipeline,
-            uniforms: uniforms(
-                resolution: metalLayer.drawableSize,
-                scale: scale,
-                time: CACurrentMediaTime() - startTime,
-                sourceRect: CGRect(x: 0, y: 0, width: 1, height: 1),
-                parameters: parameters
-            ),
+            size: bounds.size,
+            scale: scale,
+            time: CACurrentMediaTime() - startTime,
+            sourceRect: CGRect(x: 0, y: 0, width: 1, height: 1),
+            parameters: parameters,
             source: plugin.manifest.level == .capture ? texture(for: renderer.device) : nil
         )
     }
@@ -214,14 +207,12 @@ final class PreviewView: NSView {
         tickLink = nil
         guard wanted else { return }
 
-        let link = displayLink(target: self, selector: #selector(tick))
-        link.preferredFrameRateRange = CAFrameRateRange(
-            minimum: Self.framesPerSecond / 2,
-            maximum: Self.framesPerSecond,
-            preferred: Self.framesPerSecond
+        tickLink = startDisplayLink(
+            on: self,
+            target: self,
+            selector: #selector(tick),
+            framesPerSecond: Self.framesPerSecond
         )
-        link.add(to: .main, forMode: .common)
-        tickLink = link
     }
 
     @objc private func tick() {

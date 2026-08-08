@@ -69,6 +69,7 @@ targets:
     # применил бы гамму и повесил иконку в меню-баре прямо во время прогона
     sources:
       - Tests
+      - Sources/Displays.swift
       - Sources/Gamma.swift
       - Sources/Logging.swift
       - Sources/ShaderPipeline.swift

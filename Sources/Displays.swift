@@ -25,10 +25,9 @@ func screen(for displayID: CGDirectDisplayID) -> NSScreen? {
 }
 
 /// доля кадра дисплея, которую занимает рамка: на весь экран это (0, 0, 1, 1).
-/// начало сверху слева, как у текстуры захвата
-func sourceRect(for frame: CGRect, on screen: NSScreen) -> CGRect {
-    let bounds = screen.frame
-    return CGRect(
+/// начало сверху слева, как у текстуры захвата, тогда как рамки Cocoa считаются снизу
+func sourceRect(for frame: CGRect, in bounds: CGRect) -> CGRect {
+    CGRect(
         x: (frame.minX - bounds.minX) / bounds.width,
         y: (bounds.maxY - frame.maxY) / bounds.height,
         width: frame.width / bounds.width,
