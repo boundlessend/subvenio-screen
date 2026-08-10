@@ -1,6 +1,7 @@
 {
   "name": "Scanlines",
   "level": 2,
+  "icon": "line.3.horizontal",
   "animated": false,
   "parameters": [
     {

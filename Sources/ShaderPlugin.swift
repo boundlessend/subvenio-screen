@@ -29,6 +29,9 @@ struct ShaderManifest: Decodable {
     let name: String
     let level: RenderLevel
     let animated: Bool?
+    /// имя символа SF Symbols для меню. пресет описывает себя сам, как и своим именем;
+    /// без него меню возьмёт символ уровня рендеринга
+    let icon: String?
     let parameters: [ShaderParameter]?
     let gamma: GammaSettings?
 }

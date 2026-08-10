@@ -1,6 +1,7 @@
 {
   "name": "Sepia",
   "level": 1,
+  "icon": "drop",
   "gamma": {
     "tint": [
       1.0,

@@ -1,6 +1,7 @@
 {
   "name": "Invert",
   "level": 1,
+  "icon": "circle.righthalf.filled",
   "gamma": {
     "tint": [
       1.0,

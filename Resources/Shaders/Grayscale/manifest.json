@@ -1,6 +1,7 @@
 {
   "name": "Black and White",
   "level": 3,
+  "icon": "circle.lefthalf.filled",
   "animated": false,
   "parameters": [
     {

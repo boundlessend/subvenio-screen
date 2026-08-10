@@ -159,6 +159,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - меню
 
+    /// символ в размер строки меню. template означает, что цвет берётся у меню,
+    /// поэтому иконка сама тускнеет у выключенных пунктов и белеет на подсветке
+    private func menuIcon(_ name: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 14, weight: .regular))
+    }
+
+    /// символ пресета берётся из манифеста, но выдуманное имя даёт пустую картинку,
+    /// поэтому запасной вариант это уровень: он говорит, чего пресет стоит -
+    /// таблица дисплея, слой поверх экрана или чтение картинки с разрешением
+    private func pluginIcon(_ plugin: ShaderPlugin) -> NSImage? {
+        if let name = plugin.manifest.icon, let image = menuIcon(name) {
+            return image
+        }
+        switch plugin.manifest.level {
+        case .gammaLUT: return menuIcon("circle.lefthalf.filled")
+        case .overlay: return menuIcon("square.on.square")
+        case .capture: return menuIcon("camera.viewfinder")
+        }
+    }
+
     /// пересобирается на каждое открытие. список пресетов держит в актуальном виде
     /// наблюдатель за папкой, поэтому диска здесь не касаемся
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -172,6 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         toggle.target = self
+        toggle.image = menuIcon("camera.filters")
         menu.addItem(toggle)
 
         let shortcut = KeyboardShortcuts.getShortcut(for: .toggleEffect)
@@ -183,16 +205,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         hint.isEnabled = false
+        hint.image = menuIcon("keyboard")
         menu.addItem(hint)
 
         if let status = effects.status {
             menu.addItem(.separator())
             let item = NSMenuItem(
-                title: "⚠ \(status.title)",
+                title: status.title,
                 action: #selector(showStatusDetails),
                 keyEquivalent: ""
             )
             item.target = self
+            item.image = menuIcon("exclamationmark.triangle")
             menu.addItem(item)
         }
 
@@ -208,17 +232,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.target = self
             item.representedObject = plugin.identifier
             item.state = plugin.identifier == active ? .on : .off
+            item.image = pluginIcon(plugin)
             menu.addItem(item)
         }
 
         for error in effects.loadErrors {
             let item = NSMenuItem(
-                title: "⚠ \(error.pluginName)",
+                title: error.pluginName,
                 action: #selector(showLoadError(_:)),
                 keyEquivalent: ""
             )
             item.target = self
             item.representedObject = error.localizedDescription
+            item.image = menuIcon("exclamationmark.triangle")
             menu.addItem(item)
         }
 
@@ -233,6 +259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 keyEquivalent: ""
             )
             item.target = self
+            item.image = menuIcon("arrow.down.circle")
             menu.addItem(item)
         }
 
@@ -244,6 +271,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ","
         )
         settingsItem.target = self
+        settingsItem.image = menuIcon("gearshape")
         menu.addItem(settingsItem)
 
         let about = NSMenuItem(
@@ -252,12 +280,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         about.target = self
+        about.image = menuIcon("info.circle")
         menu.addItem(about)
 
-        menu.addItem(
+        let quit = menu.addItem(
             withTitle: String(localized: "Quit"),
             action: #selector(NSApplication.terminate(_:)),
             keyEquivalent: "q"
         )
+        quit.image = menuIcon("power")
     }
 }

@@ -1,6 +1,7 @@
 {
   "name": "VHS",
   "level": 2,
+  "icon": "tv",
   "animated": true,
   "parameters": [
     {

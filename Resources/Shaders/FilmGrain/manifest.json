@@ -1,6 +1,7 @@
 {
   "name": "Film Grain",
   "level": 2,
+  "icon": "film",
   "animated": true,
   "parameters": [
     {
