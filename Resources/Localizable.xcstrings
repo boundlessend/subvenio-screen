@@ -239,7 +239,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Захват экрана"
+            "value": "Захват"
           }
         }
       }
@@ -706,6 +706,17 @@
         }
       }
     },
+    "Placement": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размещение"
+          }
+        }
+      }
+    },
     "Preset": {
       "extractionState": "manual",
       "localizations": {
@@ -860,17 +871,6 @@
         }
       }
     },
-    "Subvenio Screen Settings": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Настройки Subvenio Screen"
-          }
-        }
-      }
-    },
     "The cursor moves inside the captured frame and lags by the whole pipeline delay, which reads as a laggy mouse.": {
       "extractionState": "manual",
       "localizations": {
@@ -889,6 +889,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дисплей, на который был назначен эффект, больше не подключён."
+          }
+        }
+      }
+    },
+    "The selected preset does not read the screen. These settings apply to level 3 presets.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбранный пресет не читает экран. Эти настройки действуют для пресетов уровня 3."
           }
         }
       }
@@ -1021,17 +1032,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доступна версия %@"
-          }
-        }
-      }
-    },
-    "Where it lands": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Где применяется"
           }
         }
       }
