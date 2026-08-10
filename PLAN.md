@@ -72,9 +72,14 @@ white" with an explicit warning in the UI, never as the foundation.
    markedly simpler in it.
 5. **UI and configuration.** A menu bar icon for quickly switching presets plus
    a separate settings window for hotkeys, shaders and per-display and
-   per-window rules. The window is one scrolling page of grouped sections rather
-   than a sidebar or tabs: there are four groups in total, and hiding four
-   groups behind navigation costs more clicks than it saves space.
+   per-window rules. The window is the standard macOS preferences shape: five
+   tabs in a toolbar, one screen each, with the window resizing to whatever the
+   current tab needs. It began as one scrolling page, which worked while there
+   were four groups; the fifth pushed the sliders of the selected preset below
+   the fold, and tuning grain while the preview sits off-screen is the one thing
+   this window exists to make easy. The toolbar itself is drawn by the system
+   through `NSWindow.toolbarStyle = .preference`, so the tabs cost no drawing
+   code and behave like every other preferences window on the machine.
 16. **The preview runs on a bundled picture, not on the screen.** Reading the
     real screen for a thumbnail would demand the Screen Recording permission in
     the one window that is supposed to explain the permissions, and would demand
@@ -85,6 +90,13 @@ white" with an explicit warning in the UI, never as the foundation.
     layer as the real effect, so what the window shows is what the screen gets.
     Level 1 lands in scanout and cannot be sampled, so the preview applies the
     same table to the picture itself.
+17. **The preview ticks only while someone is there to see it.** A closed or
+    minimised window costs nothing, measured: 2.6% of a core with an animated
+    preset visible, 0.0% once the window is gone. Visibility alone turned out not
+    to be enough: macOS does not mark a window occluded when another application
+    covers it completely, so the tick also stops whenever the app is not the
+    active one. Settings left open behind someone else's work now costs the same
+    as settings closed.
 18. **Turning a level 1 effect off restores every display, not only ours.**
     `CGSetDisplayTransferByTable` writes one display, but the public API to undo
     it is `CGDisplayRestoreColorSyncSettings`, which resets all of them to their
@@ -101,12 +113,6 @@ white" with an explicit warning in the UI, never as the foundation.
     user's work is in there and it is left alone. A version field in the manifest
     would need every preset author to maintain it honestly, and would still not
     tell edited copies from untouched ones.
-17. **The preview ticks only while its window is on screen.** A closed or
-    minimised window costs nothing, measured: 2.6% of a core with an animated
-    preset visible, 0.0% once the window is gone. A window fully covered by
-    another application keeps ticking, because macOS does not mark it occluded -
-    left as is, since it lasts as long as someone leaves settings open behind
-    another window.
 6. **Cursor and system elements.** A configurable option per preset. At level 3
    a cursor drawn inside the frame lags by the whole capture-shader-output
    delay, and that reads as a laggy mouse, so the default is the system cursor
@@ -207,6 +213,79 @@ That is how the noise bug was caught: the hash mixed elapsed time into its
 argument, `sin` ran out of precision, and grain vanished four minutes in. On
 screen it looked like the effect fading out; offline the variance across the
 frame was measurably zero.
+
+The same method caught the sequel. The integer hash that replaced `sin` was
+still animated by adding time to its coordinates, which slides the pattern
+instead of regenerating it: the grain crawled towards the top left at a pixel
+per frame, slow enough to look deliberate. Rendering two frames offline and
+comparing them under every small shift showed a 100% match at (-1, -1), which is
+the kind of answer an eye cannot give.
+
+## Preset backlog
+
+Ideas for presets beyond the six that ship. Each one was written as a real
+fragment function and rendered offline against the bundled preview picture
+before being written down here, so what is listed is a preset waiting for a
+folder rather than a sketch. The rendering level is the first thing to look at:
+it decides what the effect costs and whether it asks for anything.
+
+Level 1, free and covering the cursor and the menu bar:
+
+- **Faded Photo** - lifted black, softened white, a warm tint. Sepia's relative,
+  but it fades rather than turning brown.
+- **Moonlight** - blue and dimmed, the day-for-night trick from film.
+
+Level 2, one drawn layer and no permission:
+
+- **Dust & Scratches** - vertical scratches on the emulsion and specks in the
+  gate, each living exactly one film frame. Fills a real gap: there is grain but
+  no wear, and wear is what reads as film rather than as a noisy picture.
+- **Projector** - the lamp breathing and the corners falling into shadow. The
+  flicker has to stay weak; anything that pulses is charming for a minute and
+  tiring for an hour.
+
+Level 3, reads the screen:
+
+- **Amber Terminal** and **Green Phosphor** - luminance without colour, poured
+  into amber or into P1 green, with the bright parts bleeding vertically. Two
+  presets that differ by one colour vector, so a single preset with a hue
+  parameter may be the honest form.
+- **Aperture Grille** - every third column given to its own phosphor, the way a
+  Trinitron looks up close.
+- **Halation** - light spreading past the edge of what emits it. The most
+  expensive of the set and the only one visible on any content at all.
+- **1-bit Dither** - black and white with an ordered Bayer pattern between them,
+  the first Macintosh. Small text becomes hard to read, so it is an effect to
+  look at rather than to work under.
+- **Halftone** - newspaper printing, dot size following darkness, grid turned 45
+  degrees.
+- **Game Boy** - the four DMG shades and dithering between them. Four steps are
+  too few for an ordinary screen, so luminance has to be stretched before it is
+  quantised.
+- **Chromatic Aberration** - channels diverging with distance from the centre.
+
+Suggested order: Dust & Scratches first, because level 2 costs nothing and it
+fills the gap next to Film Grain; then Amber Terminal, the most recognisable
+image and the simplest level 3 shader; then Faded Photo, which is ten lines of
+manifest and no shader at all.
+
+**A level 2 layer cannot dim one channel.** The overlay composites through a
+single alpha, so a coloured mask that leaves one channel alone and darkens the
+other two is impossible there. Anything per-channel is level 3 by construction,
+which is why Aperture Grille is not the cheap effect it looks like.
+
+Rejected on purpose:
+
+- **Interlaced fields.** Indistinguishable from Scanlines on a still frame, and
+  its whole point is flicker at 50 Hz, which tires the eyes and is unsafe for
+  photosensitive people. The app respects "Reduce Motion" precisely to avoid
+  that class of effect.
+- **Phosphor burn-in.** The ghost accumulates over minutes, which means keeping
+  an averaged frame in memory across launches. That is a subsystem, not a filter.
+- **Composite NTSC.** Honest chroma modulation costs several render passes, and
+  a cheap imitation is indistinguishable from VHS, which already ships.
+- **Film stock profiles such as Kodachrome.** Colour curves demand level 3 to
+  produce what the eye reads as a tint, and tints are free at level 1.
 
 ## Deferred
 
