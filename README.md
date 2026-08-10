@@ -84,7 +84,7 @@ still a manual step: a new version means a new disk image from Releases.
 | Invert | inverts the picture, cursor and menu bar included | free |
 | Sepia | warm tint with lifted blacks | free |
 | Scanlines | CRT lines over the screen | one drawn layer |
-| Film Grain | moving grain with a vignette | one drawn layer |
+| Film Grain | flickering grain with a vignette | one drawn layer |
 | VHS | purple tint, line noise and a drifting band | one drawn layer |
 | Black and White | true desaturation, not a tint | reads the screen |
 
@@ -101,7 +101,8 @@ to disk and nothing leaves the machine.
 A preset is a folder with a `manifest.json` and a Metal fragment function. The
 settings window has an **Open shaders folder** button that takes you straight
 there; save a file and the menu updates itself, no restart. A broken preset
-shows the actual error instead of quietly disappearing.
+shows the actual error instead of quietly disappearing. A preset can name its
+own menu bar icon, and gets one for its rendering level if it does not.
 
 The six bundled presets are yours to edit. An edited one stays as you left it
 even when a new version of the app ships a different version of the same preset,

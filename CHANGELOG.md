@@ -6,6 +6,21 @@ each one ships as a disk image on the
 
 ## Unreleased
 
+### Changed
+
+- **Settings became five tabs in a toolbar**, the standard shape of a macOS
+  preferences window, instead of one page that had grown long enough to push the
+  sliders of the selected preset below the fold. The window resizes to whatever
+  the current tab needs, and the toolbar is drawn by the system rather than by
+  us.
+- Menu bar items carry icons: the effect, the hotkey, each preset, settings,
+  about and quit. A preset names its own icon through the new `icon` field of
+  `manifest.json`, and a preset without one falls back to a symbol for its
+  rendering level.
+- Parameter names read as words rather than as code: `grainStrength` shows up as
+  Grain Strength. The words are the ones the preset author chose, only the
+  spacing changed.
+
 ### Fixed
 
 - Film grain crawled towards the top left corner instead of flickering in place.

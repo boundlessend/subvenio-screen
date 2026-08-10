@@ -36,7 +36,7 @@ DEVELOPMENT_TEAM = <your team id>
 ```
 Sources/            Swift, one file per concern
   AppDelegate       menu bar and window wiring
-  SettingsWindow    the settings page, SwiftUI
+  SettingsWindow    the settings window: a tab per screen, SwiftUI
   Preview           the preset preview on the bundled picture
   EffectController  state, backend selection, persistence
   PluginSettings    slider values and per-preset options
@@ -94,6 +94,7 @@ A preset is a folder with `manifest.json` and, for levels 2 and 3,
 {
   "name": "Scanlines",
   "level": 2,
+  "icon": "line.3.horizontal",
   "animated": false,
   "parameters": [
     { "name": "scanlineStrength", "min": 0, "max": 1, "default": 0.22 }
@@ -104,6 +105,10 @@ A preset is a folder with `manifest.json` and, for levels 2 and 3,
 Parameter names must be plain identifiers, `min` must be below `max`, and the
 default must lie between them: the name becomes a shader macro and the range
 becomes a slider, so both are validated before anything is compiled.
+
+`icon` is an SF Symbols name shown next to the preset in the menu bar. It is
+optional, and a name the system does not know falls back to a symbol for the
+rendering level, so a typo costs a generic icon rather than an error.
 
 `shader.metal` holds only the fragment function. The engine prepends a prelude
 with the vertex function, the uniform struct and shared helpers, and turns
