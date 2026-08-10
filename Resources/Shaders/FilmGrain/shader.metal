@@ -2,7 +2,10 @@
 // светлые через premultiplied rgb, равный своей же alpha
 fragment float4 overlay_fragment(VertexOut in [[stage_in]],
                                  constant Uniforms &u [[buffer(0)]]) {
-    float noise = overlay_hash(in.position.xy + u.time * 61.0) - 0.5;
+    // номер кадра идёт третьей осью хеша, а не смещением аргумента: смещение сдвигало бы
+    // один и тот же узор, и зерно ползло бы по экрану вместо того чтобы обновляться.
+    // 24 кадра в секунду, как у плёнки: на частоте дисплея зерно слишком гладкое
+    float noise = overlay_hash3(float3(in.position.xy, floor(u.time * 24.0))) - 0.5;
     float grain = noise * grainStrength;
 
     float2 centered = (in.uv - 0.5) * 2.0;

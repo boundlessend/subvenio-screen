@@ -4,6 +4,18 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 each one ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
+## Unreleased
+
+### Fixed
+
+- Film grain crawled towards the top left corner instead of flickering in place.
+  The noise hash is a function of a fixed grid, and the shader animated it by
+  offsetting both coordinates by the elapsed time, which moves the pattern
+  rather than replacing it: one pixel per frame, exactly the speed the eye
+  tracks best. The frame number is now an axis of the hash instead of an offset,
+  and the grain is redrawn 24 times a second like film rather than on every
+  refresh.
+
 ## 1.4.0
 
 ### Added

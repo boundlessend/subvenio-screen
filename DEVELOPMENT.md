@@ -125,7 +125,13 @@ Available in every shader:
 - `u.resolution`, `u.scale`, `u.time` - time wraps once a day
 - `u.sourceOrigin`, `u.sourceSize` - which slice of the display frame this
   overlay shows, and `overlay_source_uv(in.uv, u)` to sample it
-- `overlay_hash(float2)` for noise, `overlay_sampler` for level 3 textures
+- `overlay_hash(float2)` and `overlay_hash3(float3)` for noise,
+  `overlay_sampler` for level 3 textures
+
+Both hashes read a fixed grid, so animating one by adding time to its
+coordinates slides the pattern across the screen instead of replacing it. Give
+the frame number an axis of its own: `overlay_hash3(float3(in.position.xy,
+floor(u.time * 24.0)))`.
 
 Level 2 shaders must output premultiplied alpha. Level 3 shaders receive the
 captured frame as `texture2d<float> source [[texture(0)]]` and return opaque
