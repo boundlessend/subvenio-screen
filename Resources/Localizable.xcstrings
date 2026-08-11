@@ -1058,13 +1058,13 @@
         }
       }
     },
-    "Your edits to the six bundled presets will be lost. Presets you added yourself are left alone.": {
+    "Your edits to the bundled presets will be lost. Presets you added yourself are left alone.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ваши правки шести встроенных пресетов пропадут. Пресеты, добавленные вами, останутся на месте."
+            "value": "Ваши правки встроенных пресетов пропадут. Пресеты, добавленные вами, останутся на месте."
           }
         }
       }

@@ -1,0 +1,16 @@
+{
+  "name": "Faded Photo",
+  "level": 1,
+  "icon": "photo",
+  "gamma": {
+    "tint": [
+      1.0,
+      0.94,
+      0.84
+    ],
+    "gamma": 1.0,
+    "invert": false,
+    "blackPoint": 0.14,
+    "whitePoint": 0.88
+  }
+}

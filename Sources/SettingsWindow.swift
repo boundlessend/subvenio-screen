@@ -162,7 +162,7 @@ struct EffectSettings: View {
                 Button("Restore", role: .destructive) { effects.restoreBundled() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Your edits to the six bundled presets will be lost. Presets you added yourself are left alone.")
+                Text("Your edits to the bundled presets will be lost. Presets you added yourself are left alone.")
             }
         }
     }

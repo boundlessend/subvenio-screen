@@ -1,0 +1,20 @@
+{
+  "name": "Amber Terminal",
+  "level": 3,
+  "icon": "terminal",
+  "animated": false,
+  "parameters": [
+    {
+      "name": "glow",
+      "min": 0,
+      "max": 1,
+      "default": 0.35
+    },
+    {
+      "name": "lineStrength",
+      "min": 0,
+      "max": 1,
+      "default": 0.18
+    }
+  ]
+}
