@@ -15,6 +15,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var updateTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !anotherCopyIsRunning() else {
+            NSApp.terminate(nil)
+            return
+        }
+
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // положение иконки в меню-баре переживает перезапуск
         item.autosaveName = "SubvenioScreenStatusItem"
@@ -38,6 +43,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateStatusIcon()
         showWelcomeOnFirstLaunch()
         scheduleUpdateChecks()
+    }
+
+    /// вторая копия это вторая иконка в меню-баре и вторая гамма-таблица на том же
+    /// дисплее: выключение одной оставило бы экран перекрашенным второй
+    private func anotherCopyIsRunning() -> Bool {
+        guard let identifier = Bundle.main.bundleIdentifier else { return false }
+        let others = NSRunningApplication
+            .runningApplications(withBundleIdentifier: identifier)
+            .filter { $0 != .current }
+        guard !others.isEmpty else { return false }
+        Log.effects.info("another copy is already running, quitting this one")
+        return true
     }
 
     /// проверка при запуске и раз в час: приложение живёт неделями, и без тика
@@ -266,46 +283,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        let active = effects.selectedPlugin?.identifier
-        // пресеты идут группами по уровню: уровень это цена эффекта и разрешение,
-        // которое он спросит, и по нему выбирают быстрее, чем по имени
-        for level in RenderLevel.allCases {
-            let group = effects.plugins.filter { $0.manifest.level == level }
-            guard !group.isEmpty else { continue }
-
-            menu.addItem(.sectionHeader(title: level.groupTitle))
-            for plugin in group {
-                let item = NSMenuItem(
-                    title: plugin.manifest.name,
-                    action: #selector(selectPlugin(_:)),
-                    keyEquivalent: ""
-                )
-                item.target = self
-                item.representedObject = plugin.identifier
-                item.state = plugin.identifier == active ? .on : .off
-                item.image = pluginIcon(plugin)
-                // имя пресета говорит не всё: "Halation" без подсказки это загадка
-                item.toolTip = plugin.manifest.description?.resolved
-                menu.addItem(item)
-            }
-        }
-
-        // без заголовка битый пресет читается как ещё один пресет в предыдущей группе
-        if !effects.loadErrors.isEmpty {
-            menu.addItem(.separator())
-            menu.addItem(.sectionHeader(title: String(localized: "Failed to load")))
-        }
-        for error in effects.loadErrors {
-            let item = NSMenuItem(
-                title: error.pluginName,
-                action: #selector(showLoadError(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = error.localizedDescription
-            item.image = menuIcon("exclamationmark.triangle")
-            menu.addItem(item)
-        }
+        addPresetItems(to: menu)
+        addErrorItems(to: menu)
 
         if let release = updates.available {
             menu.addItem(.separator())
@@ -348,5 +327,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: "q"
         )
         quit.image = menuIcon("power")
+    }
+
+    /// пресеты идут группами по уровню: уровень это цена эффекта и разрешение,
+    /// которое он спросит, и по нему выбирают быстрее, чем по имени
+    private func addPresetItems(to menu: NSMenu) {
+        let active = effects.selectedPlugin?.identifier
+        for level in RenderLevel.allCases {
+            let group = effects.plugins.filter { $0.manifest.level == level }
+            guard !group.isEmpty else { continue }
+
+            menu.addItem(.sectionHeader(title: level.groupTitle))
+            for plugin in group {
+                let item = NSMenuItem(
+                    title: plugin.manifest.name,
+                    action: #selector(selectPlugin(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = self
+                item.representedObject = plugin.identifier
+                item.state = plugin.identifier == active ? .on : .off
+                item.image = pluginIcon(plugin)
+                // имя пресета говорит не всё: "Halation" без подсказки это загадка
+                item.toolTip = plugin.manifest.description?.resolved
+                menu.addItem(item)
+            }
+        }
+    }
+
+    /// без заголовка битый пресет читается как ещё один пресет в предыдущей группе
+    private func addErrorItems(to menu: NSMenu) {
+        guard !effects.loadErrors.isEmpty else { return }
+        menu.addItem(.separator())
+        menu.addItem(.sectionHeader(title: String(localized: "Failed to load")))
+
+        for error in effects.loadErrors {
+            let item = NSMenuItem(
+                title: error.pluginName,
+                action: #selector(showLoadError(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = error.localizedDescription
+            item.image = menuIcon("exclamationmark.triangle")
+            menu.addItem(item)
+        }
     }
 }

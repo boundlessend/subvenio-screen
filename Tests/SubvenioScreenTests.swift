@@ -1,3 +1,4 @@
+import Metal
 import XCTest
 
 /// проверки только на чистые преобразования: таблицы гаммы, разбор манифеста
@@ -185,6 +186,186 @@ final class SourceRectTests: XCTestCase {
             sourceRect(for: window, in: second),
             CGRect(x: 0.25, y: 0, width: 0.5, height: 0.5)
         )
+    }
+}
+
+/// установка встроенных пресетов это единственное место, где приложение пишет
+/// в чужую папку и может затереть чужую работу, поэтому проверяется целиком
+final class BundledInstallTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var suite = ""
+    private var bundled: URL!
+    private var installed: URL!
+    private var root: URL!
+
+    override func setUpWithError() throws {
+        suite = "SubvenioScreenTests-\(UUID().uuidString)"
+        defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+
+        root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(suite)
+        // Bundle умеет смотреть в обычную папку, поэтому «встроенные» пресеты
+        // подделываются директорией и версию их содержимого задаёт тест
+        bundled = root.appendingPathComponent("Bundle/Shaders")
+        installed = root.appendingPathComponent("Shaders")
+        try FileManager.default.createDirectory(at: bundled, withIntermediateDirectories: true)
+        try write(preset: "Alpha", body: "float4(0)", to: bundled)
+        try write(preset: "Beta", body: "float4(1)", to: bundled)
+    }
+
+    override func tearDownWithError() throws {
+        defaults.removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    private func write(preset: String, body: String, to directory: URL) throws {
+        let folder = directory.appendingPathComponent(preset)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try #"{"name": "\#(preset)", "level": 2}"#.write(
+            to: folder.appendingPathComponent("manifest.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "fragment float4 overlay_fragment() { return \(body); }".write(
+            to: folder.appendingPathComponent("shader.metal"),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    private func install() throws {
+        let bundle = try XCTUnwrap(Bundle(url: root.appendingPathComponent("Bundle")))
+        try installBundledPlugins(into: installed, from: bundle, defaults: defaults)
+    }
+
+    private func restore() throws {
+        let bundle = try XCTUnwrap(Bundle(url: root.appendingPathComponent("Bundle")))
+        try restoreBundledPlugins(into: installed, from: bundle, defaults: defaults)
+    }
+
+    private func shader(_ preset: String) throws -> String {
+        try String(
+            contentsOf: installed.appendingPathComponent("\(preset)/shader.metal"),
+            encoding: .utf8
+        )
+    }
+
+    func testPresetsArriveAndSurviveASecondPass() throws {
+        try install()
+        try install()
+
+        XCTAssertEqual(loadPlugins(from: installed).plugins.count, 2)
+    }
+
+    /// правка пользователя дороже нашей копии: обновление её не трогает
+    func testAnEditedPresetIsLeftAlone() throws {
+        try install()
+        try "fragment float4 overlay_fragment() { return float4(0.5); }".write(
+            to: installed.appendingPathComponent("Alpha/shader.metal"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try write(preset: "Alpha", body: "float4(0.25)", to: bundled)
+
+        try install()
+
+        XCTAssertTrue(try shader("Alpha").contains("0.5"))
+    }
+
+    /// а нетронутая копия обязана получить исправление новой версии
+    func testAnUntouchedPresetIsUpdated() throws {
+        try install()
+        try write(preset: "Alpha", body: "float4(0.25)", to: bundled)
+
+        try install()
+
+        XCTAssertTrue(try shader("Alpha").contains("0.25"))
+    }
+
+    func testADeletedPresetStaysDeleted() throws {
+        try install()
+        try FileManager.default.removeItem(at: installed.appendingPathComponent("Beta"))
+
+        try install()
+
+        XCTAssertEqual(loadPlugins(from: installed).plugins.map(\.identifier), ["Alpha"])
+    }
+
+    func testRestoreBringsBackWhatWasDeletedAndEdited() throws {
+        try install()
+        try FileManager.default.removeItem(at: installed.appendingPathComponent("Beta"))
+        try "fragment float4 overlay_fragment() { return float4(0.5); }".write(
+            to: installed.appendingPathComponent("Alpha/shader.metal"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        try restore()
+
+        XCTAssertEqual(loadPlugins(from: installed).plugins.count, 2)
+        XCTAssertTrue(try shader("Alpha").contains("float4(0)"))
+    }
+}
+
+/// пресеты, которые уезжают с приложением: битый шейдер здесь дожил бы до релиза,
+/// потому что компиляция происходит только при включении эффекта
+final class BundledShaderTests: XCTestCase {
+    private var shaders: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources/Shaders")
+    }
+
+    func testEveryBundledPresetLoads() throws {
+        let loaded = loadPlugins(from: shaders)
+
+        XCTAssertTrue(loaded.errors.isEmpty, "\(loaded.errors.map(\.localizedDescription))")
+        XCTAssertFalse(loaded.plugins.isEmpty)
+    }
+
+    /// описание видно в меню и в настройках, и пресет без него выглядит недоделанным
+    func testEveryBundledPresetDescribesItself() throws {
+        for plugin in loadPlugins(from: shaders).plugins {
+            XCTAssertNotNil(
+                plugin.manifest.description?.resolved,
+                "\(plugin.identifier) has no description in this language"
+            )
+        }
+    }
+
+    func testEveryBundledShaderCompiles() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw XCTSkip("на этой машине нет устройства Metal")
+        }
+        for plugin in loadPlugins(from: shaders).plugins
+        where plugin.manifest.level != .gammaLUT {
+            XCTAssertNoThrow(
+                try makePipeline(device: device, plugin: plugin),
+                plugin.identifier
+            )
+        }
+    }
+}
+
+final class LocalizedTextTests: XCTestCase {
+    private func decode(_ json: String) throws -> LocalizedText {
+        try JSONDecoder().decode(LocalizedText.self, from: Data(json.utf8))
+    }
+
+    func testAPlainStringIsUsedAsIs() throws {
+        XCTAssertEqual(try decode(#""Grain Strength""#).resolved, "Grain Strength")
+    }
+
+    /// чужой язык хуже отсутствия строки: подпись собирается из имени параметра
+    func testAMissingLanguageResolvesToNothing() throws {
+        let text = try decode(#"{"de": "Körnung"}"#)
+        XCTAssertNil(text.resolved)
+    }
+
+    func testEnglishIsTheFallback() throws {
+        let text = try decode(#"{"en": "Grain", "de": "Körnung"}"#)
+        XCTAssertEqual(text.resolved, "Grain")
     }
 }
 

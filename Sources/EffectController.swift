@@ -171,7 +171,9 @@ final class EffectController: ObservableObject {
         // шейдер переписали на диске: пайплайн собран при включении и сам новую
         // редакцию не подхватит, а превью в настройках уже показывает её
         if isEnabled, let previous, let current = selectedPlugin, current != previous {
-            Log.plugins.info("preset changed on disk, restarting: \(current.identifier, privacy: .public)")
+            Log.plugins.info(
+                "preset changed on disk, restarting: \(current.identifier, privacy: .public)"
+            )
             enable()
         }
     }
