@@ -62,6 +62,8 @@ struct EffectSettings: View {
     /// шейдер выбранного пресета не компилируется: превью знает об этом первым,
     /// потому что собирает пайплайн раньше, чем эффект успевают включить
     @State private var shaderFailure: String?
+    /// системная настройка меняется, пока окно открыто, поэтому не читается на месте
+    @State private var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
     var body: some View {
         Form {
@@ -84,6 +86,11 @@ struct EffectSettings: View {
                     }
                 }
             }
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(
+            for: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification
+        )) { _ in
+            reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         }
     }
 
@@ -132,6 +139,14 @@ struct EffectSettings: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
+                // без этой строки застывший пресет выглядит сломанным, а причина
+                // лежит в системных настройках и к приложению отношения не имеет
+                if plugin.isAnimated, reduceMotion {
+                    Text("This preset animates, and the system \"Reduce Motion\" setting is on, so it stays still.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+
                 // ползунков обычно меньше, чем высоты у превью: по центру пустота
                 // делится поровну и не выглядит забытым местом
                 HStack(alignment: .center, spacing: 20) {
@@ -166,12 +181,17 @@ struct EffectSettings: View {
                     .foregroundStyle(.red)
             }
 
-            HStack(spacing: 12) {
-                if effects.selectedPlugin?.manifest.parameters?.isEmpty == false,
-                   let plugin = effects.selectedPlugin {
-                    Button("Reset to defaults") {
-                        effects.resetParameters(for: plugin)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    if effects.selectedPlugin?.manifest.parameters?.isEmpty == false,
+                       let plugin = effects.selectedPlugin {
+                        // рядом с "Restore bundled presets" короткое "Reset to defaults"
+                        // читается как сброс всего приложения, хотя трогает одни ползунки
+                        Button("Reset the sliders") {
+                            effects.resetParameters(for: plugin)
+                        }
                     }
+                    Button("New preset from template") { newPreset() }
                 }
                 presetButtons
             }
@@ -196,6 +216,20 @@ struct EffectSettings: View {
             } message: {
                 Text("Your edits to the bundled presets will be lost. Presets you added yourself are left alone.")
             }
+        }
+    }
+
+    /// заготовка появляется в папке и сразу показывается в Finder: наблюдатель за папкой
+    /// добавит её в меню сам, а человеку остаётся открыть shader.metal
+    private func newPreset() {
+        do {
+            let created = try createPresetFromTemplate(in: shadersDirectory())
+            NSWorkspace.shared.activateFileViewerSelecting([created])
+        } catch {
+            showAlert(
+                title: String(localized: "Could not create the preset"),
+                message: error.localizedDescription
+            )
         }
     }
 
@@ -463,13 +497,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     private var updates: UpdateController?
     private var tab: SettingsTab = .effect
 
-    func show(effects: EffectController, updates: UpdateController) {
+    /// tab равный nil означает «открыть на том, что было»: за человека выбирают вкладку
+    /// только когда его привёл сюда конкретный вопрос вроде смены комбинации
+    func show(effects: EffectController, updates: UpdateController, tab: SettingsTab?) {
         self.effects = effects
         self.updates = updates
 
         if window == nil {
             let hosting = NSHostingView(
-                rootView: SettingsRoot(tab: tab, effects: effects, updates: updates)
+                rootView: SettingsRoot(tab: self.tab, effects: effects, updates: updates)
             )
             let window = NSWindow(
                 contentRect: NSRect(origin: .zero, size: hosting.fittingSize),
@@ -498,7 +534,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
             self.window = window
         }
 
-        select(tab)
+        select(tab ?? self.tab)
         activateApp()
         window?.makeKeyAndOrderFront(nil)
     }

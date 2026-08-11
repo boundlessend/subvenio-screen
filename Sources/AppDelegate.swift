@@ -60,11 +60,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         effects.restoreGamma()
     }
 
-    /// меню-бар без Dock-иконки при первом запуске выглядит так, будто ничего не случилось
+    /// меню-бар без Dock-иконки при первом запуске выглядит так, будто ничего не случилось.
+    /// окно настроек само по себе этого не объясняет: оно не говорит, куда смотреть,
+    /// когда его закроют, и каким жестом эффект включается
     private func showWelcomeOnFirstLaunch() {
         guard !UserDefaults.standard.bool(forKey: Self.didShowWelcomeKey) else { return }
         UserDefaults.standard.set(true, forKey: Self.didShowWelcomeKey)
+
+        activateApp()
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Subvenio Screen lives in the menu bar")
+        alert.informativeText = welcomeText()
+        alert.icon = NSImage(named: "AppIcon")
+        alert.addButton(withTitle: String(localized: "Open Settings"))
+        alert.addButton(withTitle: String(localized: "Later"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
         openSettings()
+    }
+
+    private func welcomeText() -> String {
+        let clicks = String(localized: """
+        Its icon is at the top right of the screen. Click it to turn the effect on \
+        and off, right click it for the preset list and the settings.
+        """)
+        guard let shortcut = KeyboardShortcuts.getShortcut(for: .toggleEffect) else {
+            return clicks
+        }
+        return clicks + "\n\n" + String(
+            format: String(localized: "The hotkey is %@, and settings can change it."),
+            shortcut.description
+        )
     }
 
     private func updateStatusIcon() {
@@ -75,10 +100,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ? NSImage(named: "MenuBarIcon")
             : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
         image?.isTemplate = true
-        image?.accessibilityDescription = "Subvenio Screen"
+        // тусклая иконка это единственный признак выключенного эффекта, а VoiceOver
+        // тусклости не видит: состояние приходится проговаривать
+        image?.accessibilityDescription = statusDescription()
         button.image = image
         button.appearsDisabled = !effects.isEnabled && effects.status == nil
         button.toolTip = effects.status?.title ?? effects.selectedPlugin?.manifest.name
+    }
+
+    private func statusDescription() -> String {
+        if let status = effects.status {
+            return String(format: String(localized: "Subvenio Screen: %@"), status.title)
+        }
+        return effects.isEnabled
+            ? String(localized: "Subvenio Screen: effect on")
+            : String(localized: "Subvenio Screen: effect off")
     }
 
     @objc private func statusItemClicked() {
@@ -139,7 +175,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // на время открытого окна приложение становится обычным: появляется ⌘Tab
         // и собственное меню, иначе окно теряется за чужими
         NSApp.setActivationPolicy(.regular)
-        settings.show(effects: effects, updates: updates)
+        settings.show(effects: effects, updates: updates, tab: nil)
+    }
+
+    /// из меню-бара пришли за комбинацией, а не за пресетами: вкладка выбирается за человека
+    @objc private func openHotkeySettings() {
+        NSApp.setActivationPolicy(.regular)
+        settings.show(effects: effects, updates: updates, tab: .general)
     }
 
     /// стандартная панель берёт имя, версию и копирайт из Info.plist,
@@ -197,14 +239,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(toggle)
 
         let shortcut = KeyboardShortcuts.getShortcut(for: .toggleEffect)
+        // строку с комбинацией хочется нажать, чтобы её сменить, поэтому она ведёт
+        // туда, где её записывают, а не стоит мёртвой подписью
         let hint = NSMenuItem(
             title: shortcut.map {
                 String(format: String(localized: "Hotkey: %@"), $0.description)
             } ?? String(localized: "No hotkey assigned"),
-            action: nil,
+            action: #selector(openHotkeySettings),
             keyEquivalent: ""
         )
-        hint.isEnabled = false
+        hint.target = self
         hint.image = menuIcon("keyboard")
         menu.addItem(hint)
 
@@ -246,6 +290,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
+        // без заголовка битый пресет читается как ещё один пресет в предыдущей группе
+        if !effects.loadErrors.isEmpty {
+            menu.addItem(.separator())
+            menu.addItem(.sectionHeader(title: String(localized: "Failed to load")))
+        }
         for error in effects.loadErrors {
             let item = NSMenuItem(
                 title: error.pluginName,

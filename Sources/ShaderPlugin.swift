@@ -312,6 +312,65 @@ func restoreBundledPlugins(
     }
 }
 
+/// заготовка своего пресета: рабочий шейдер уровня 2 с одним ползунком.
+/// «открыть папку» без неё означает, что человек обязан помнить формат манифеста
+/// и сигнатуру фрагментной функции наизусть
+private let templateManifest = """
+{
+  "name": "My Preset",
+  "level": 2,
+  "icon": "wand.and.stars",
+  "animated": false,
+  "parameters": [
+    { "name": "amount", "min": 0, "max": 1, "default": 0.5 }
+  ]
+}
+
+"""
+
+private let templateShader = """
+// уровень 2: этот слой рисуется поверх экрана, и alpha решает, сколько видно
+// картинки под ним. имена из parameters манифеста доступны здесь как есть,
+// а u даёт разрешение, масштаб и время.
+//
+// уровень 3 вместо этого читает сам экран: добавьте
+// texture2d<float> source [[texture(0)]] в аргументы, поднимите level до 3
+// и берите пиксель через source.sample(overlay_sampler, overlay_source_uv(in.uv, u))
+fragment float4 overlay_fragment(VertexOut in [[stage_in]],
+                                 constant Uniforms &u [[buffer(0)]]) {
+    float2 centred = in.uv - 0.5;
+    float corner = smoothstep(0.35, 0.75, length(centred));
+    return float4(0.0, 0.0, 0.0, corner * amount);
+}
+
+"""
+
+/// создаёт папку с заготовкой и возвращает её. имя подбирается свободное,
+/// чтобы кнопка не переписала то, что человек уже написал
+func createPresetFromTemplate(in directory: URL) throws -> URL {
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+    var destination = directory.appendingPathComponent("My Preset")
+    var attempt = 2
+    while FileManager.default.fileExists(atPath: destination.path) {
+        destination = directory.appendingPathComponent("My Preset \(attempt)")
+        attempt += 1
+    }
+
+    try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
+    try templateManifest.write(
+        to: destination.appendingPathComponent("manifest.json"),
+        atomically: true,
+        encoding: .utf8
+    )
+    try templateShader.write(
+        to: destination.appendingPathComponent("shader.metal"),
+        atomically: true,
+        encoding: .utf8
+    )
+    return destination
+}
+
 /// сканирует папку с плагинами; битые плагины возвращаются ошибками, а не выбрасываются молча
 func loadPlugins(from directory: URL) -> (plugins: [ShaderPlugin], errors: [PluginError]) {
     let entries = (try? FileManager.default.contentsOfDirectory(

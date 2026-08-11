@@ -13,6 +13,17 @@
         }
       }
     },
+    "\"%@\" needs Screen Recording permission": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» просит разрешение на запись экрана"
+          }
+        }
+      }
+    },
     "\"%@\" needs Screen Recording permission. Turn the effect on to grant it.": {
       "extractionState": "manual",
       "localizations": {
@@ -167,13 +178,13 @@
         }
       }
     },
-    "A gamma table can scale channels separately but cannot mix them, so an honest black and white effect has to read the picture on screen.\n\nFrames only live in memory until they are drawn: nothing is written to disk and nothing leaves your machine.\n\nThe system permission dialog opens next.\n": {
+    "A gamma table can scale channels separately but cannot mix them, so an effect that reacts to the picture rather than tinting it has to read the screen.\n\nFrames only live in memory until they are drawn: nothing is written to disk and nothing leaves your machine.\n\nThe system permission dialog opens next.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Гамма-таблица умеет менять каналы по отдельности, но не смешивать их, поэтому честный чёрно-белый обязан читать изображение экрана.\n\nКадры живут только в памяти до вывода на экран: приложение ничего не пишет на диск и никуда не передаёт.\n\nДальше откроется системный диалог, где надо разрешить запись экрана.\n"
+            "value": "Гамма-таблица умеет менять каналы по отдельности, но не умеет их смешивать, поэтому эффект, который отвечает на картинку, а не подкрашивает её, обязан прочитать экран.\n\nКадры живут в памяти ровно до отрисовки: ничего не пишется на диск и ничего не уходит с машины.\n\nСледом откроется системный диалог разрешения."
           }
         }
       }
@@ -306,6 +317,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось изменить автозапуск"
+          }
+        }
+      }
+    },
+    "Could not create the preset": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось создать пресет"
           }
         }
       }
@@ -508,17 +530,6 @@
         }
       }
     },
-    "GitHub has no public releases for this app yet": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "У этого приложения пока нет публичных релизов на GitHub"
-          }
-        }
-      }
-    },
     "Half": {
       "extractionState": "manual",
       "localizations": {
@@ -537,6 +548,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хоткей: %@"
+          }
+        }
+      }
+    },
+    "Its icon is at the top right of the screen. Click it to turn the effect on and off, right click it for the preset list and the settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Иконка стоит в правом верхнем углу экрана. Клик по ней включает и выключает эффект, правый клик открывает список пресетов и настройки."
+          }
+        }
+      }
+    },
+    "Later": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позже"
           }
         }
       }
@@ -607,6 +640,17 @@
         }
       }
     },
+    "New preset from template": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новый пресет из заготовки"
+          }
+        }
+      }
+    },
     "No hotkey assigned": {
       "extractionState": "manual",
       "localizations": {
@@ -647,6 +691,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Окно не выбрано"
+          }
+        }
+      }
+    },
+    "Nothing to check against yet: this app has no public releases.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверять пока не с чем: у приложения нет публичных релизов."
           }
         }
       }
@@ -805,13 +860,13 @@
         }
       }
     },
-    "Reset to defaults": {
+    "Reset the sliders": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сбросить к умолчаниям"
+            "value": "Сбросить ползунки"
           }
         }
       }
@@ -904,6 +959,50 @@
         }
       }
     },
+    "Subvenio Screen lives in the menu bar": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subvenio Screen живёт в меню-баре"
+          }
+        }
+      }
+    },
+    "Subvenio Screen: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subvenio Screen: %@"
+          }
+        }
+      }
+    },
+    "Subvenio Screen: effect off": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subvenio Screen: эффект выключен"
+          }
+        }
+      }
+    },
+    "Subvenio Screen: effect on": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subvenio Screen: эффект включён"
+          }
+        }
+      }
+    },
     "The cursor moves inside the captured frame and lags by the whole pipeline delay, which reads as a laggy mouse.": {
       "extractionState": "manual",
       "localizations": {
@@ -922,6 +1021,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дисплей, на который был назначен эффект, больше не подключён."
+          }
+        }
+      }
+    },
+    "The hotkey is %@, and settings can change it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Комбинация клавиш: %@, в настройках её можно сменить."
           }
         }
       }
@@ -970,13 +1080,24 @@
         }
       }
     },
-    "This effect needs Screen Recording permission": {
+    "This preset animates, and the system \"Reduce Motion\" setting is on, so it stays still.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Этому эффекту нужно разрешение Screen Recording"
+            "value": "Пресет анимированный, а системная настройка «Уменьшение движения» включена, поэтому он стоит на месте."
+          }
+        }
+      }
+    },
+    "This preset does not compile: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот пресет не компилируется: %@"
           }
         }
       }

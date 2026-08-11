@@ -15,18 +15,23 @@ func activateApp() {
     NSApp.activate()
 }
 
-/// свой экран объяснения до системного диалога, как договорились в PLAN.md
-func ensureScreenRecordingAccess() -> Bool {
+/// свой экран объяснения до системного диалога, как договорились в PLAN.md.
+/// имя пресета в заголовке: разрешение спрашивают восемь разных эффектов,
+/// и человек должен видеть, который из них его сейчас попросил
+func ensureScreenRecordingAccess(for presetName: String) -> Bool {
     if hasScreenRecordingAccess() {
         return true
     }
 
     activateApp()
     let explanation = NSAlert()
-    explanation.messageText = String(localized: "This effect needs Screen Recording permission")
+    explanation.messageText = String(
+        format: String(localized: "\"%@\" needs Screen Recording permission"),
+        presetName
+    )
     explanation.informativeText = String(localized: """
-    A gamma table can scale channels separately but cannot mix them, so an honest \
-    black and white effect has to read the picture on screen.
+    A gamma table can scale channels separately but cannot mix them, so an effect \
+    that reacts to the picture rather than tinting it has to read the screen.
 
     Frames only live in memory until they are drawn: nothing is written to disk \
     and nothing leaves your machine.

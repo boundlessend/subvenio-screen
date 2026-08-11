@@ -419,7 +419,7 @@ final class EffectController: ObservableObject {
     }
 
     private func startCapture(plugin: ShaderPlugin, frame: CGRect) {
-        guard ensureScreenRecordingAccess() else {
+        guard ensureScreenRecordingAccess(for: plugin.manifest.name) else {
             disable()
             return
         }

@@ -54,7 +54,9 @@ enum UpdateError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .httpStatus(code) where code == 404:
-            return String(localized: "GitHub has no public releases for this app yet")
+            // репозиторий приватный, и так и задумано: это не поломка, а состояние,
+            // и текст не должен звучать как жалоба на GitHub
+            return String(localized: "Nothing to check against yet: this app has no public releases.")
         case let .httpStatus(code):
             return String(format: String(localized: "GitHub answered with status %lld"), code)
         case .malformedPayload:
