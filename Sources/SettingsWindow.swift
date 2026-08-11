@@ -99,8 +99,15 @@ struct EffectSettings: View {
                     }
                 }
             )) {
-                ForEach(effects.plugins, id: \.identifier) { item in
-                    Text(item.manifest.name).tag(item.identifier)
+                // те же группы, что в меню-баре: семнадцать имён подряд читаются
+                // как список файлов, а по уровню видно, чего пресет стоит
+                ForEach(RenderLevel.allCases, id: \.self) { level in
+                    Section(level.groupTitle) {
+                        ForEach(effects.plugins.filter { $0.manifest.level == level },
+                                id: \.identifier) { item in
+                            Text(item.manifest.name).tag(item.identifier)
+                        }
+                    }
                 }
             }
 

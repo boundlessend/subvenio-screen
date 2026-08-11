@@ -453,6 +453,17 @@
         }
       }
     },
+    "Free": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Бесплатные"
+          }
+        }
+      }
+    },
     "Full resolution": {
       "extractionState": "manual",
       "localizations": {
@@ -640,6 +651,17 @@
         }
       }
     },
+    "One drawn layer": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слой поверх экрана"
+          }
+        }
+      }
+    },
     "Only under the selected window": {
       "extractionState": "manual",
       "localizations": {
@@ -757,6 +779,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Выход"
+          }
+        }
+      }
+    },
+    "Reads the screen": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читают экран"
           }
         }
       }

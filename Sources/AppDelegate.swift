@@ -223,17 +223,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         let active = effects.selectedPlugin?.identifier
-        for plugin in effects.plugins {
-            let item = NSMenuItem(
-                title: plugin.manifest.name,
-                action: #selector(selectPlugin(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = plugin.identifier
-            item.state = plugin.identifier == active ? .on : .off
-            item.image = pluginIcon(plugin)
-            menu.addItem(item)
+        // пресеты идут группами по уровню: уровень это цена эффекта и разрешение,
+        // которое он спросит, и по нему выбирают быстрее, чем по имени
+        for level in RenderLevel.allCases {
+            let group = effects.plugins.filter { $0.manifest.level == level }
+            guard !group.isEmpty else { continue }
+
+            menu.addItem(.sectionHeader(title: level.groupTitle))
+            for plugin in group {
+                let item = NSMenuItem(
+                    title: plugin.manifest.name,
+                    action: #selector(selectPlugin(_:)),
+                    keyEquivalent: ""
+                )
+                item.target = self
+                item.representedObject = plugin.identifier
+                item.state = plugin.identifier == active ? .on : .off
+                item.image = pluginIcon(plugin)
+                menu.addItem(item)
+            }
         }
 
         for error in effects.loadErrors {

@@ -2,10 +2,21 @@ import CryptoKit
 import Foundation
 
 /// уровень рендеринга из PLAN.md: 1 гамма-LUT, 2 alpha-оверлей, 3 захват экрана
-enum RenderLevel: Int, Decodable {
+enum RenderLevel: Int, Decodable, CaseIterable {
     case gammaLUT = 1
     case overlay = 2
     case capture = 3
+
+    /// заголовок группы пресетов в меню и в списке настроек. говорит не про технику,
+    /// а про то, что человек заплатит: ничего, один слой поверх экрана или
+    /// разрешение на чтение экрана
+    var groupTitle: String {
+        switch self {
+        case .gammaLUT: return String(localized: "Free")
+        case .overlay: return String(localized: "One drawn layer")
+        case .capture: return String(localized: "Reads the screen")
+        }
+    }
 }
 
 struct ShaderParameter: Decodable {
