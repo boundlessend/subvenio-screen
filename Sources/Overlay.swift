@@ -5,11 +5,19 @@ import QuartzCore
 /// вью с CAMetalLayer в качестве backing layer: статичный шейдер перерисовывается
 /// только при смене геометрии, анимированный гоняет контроллер
 final class OverlayView: NSView {
+    /// время шейдера идёт по кругу раз в сутки: дальше оно перестаёт помещаться
+    /// во float32 без потери шага между кадрами, а скачок фазы раз в сутки не виден
+    private static let timeWrap: CFTimeInterval = 86_400
+
     private let renderer: OverlayRenderer
 
     var pipeline: MTLRenderPipelineState?
     var parameters: [Float] = []
-    var time: Double = 0
+    /// анимация разрешена: время отсчитывается прямо при отрисовке. хранить момент
+    /// времени в поле нельзя - кадры уровня 3 приходят со своей очереди и своего
+    /// такта не имеют, и такой шейдер рисовался бы вечно на нуле
+    var isAnimated = false
+    var startTime = CACurrentMediaTime()
     /// какой кусок кадра дисплея показывает этот оверлей, в долях от кадра
     var sourceRect = CGRect(x: 0, y: 0, width: 1, height: 1)
     /// уровень 3 рисует только по кадру захвата: без него шейдер прочитал бы пустую
@@ -51,6 +59,9 @@ final class OverlayView: NSView {
               let scale = window?.backingScaleFactor,
               source != nil || !expectsSource else { return }
 
+        let time = isAnimated
+            ? (CACurrentMediaTime() - startTime).truncatingRemainder(dividingBy: Self.timeWrap)
+            : 0
         renderer.draw(
             in: layer,
             pipeline: pipeline,
@@ -105,7 +116,6 @@ final class OverlayController {
     private var window: OverlayWindow?
     private var pipelines: [PipelineKey: MTLRenderPipelineState] = [:]
     private var displayLink: CADisplayLink?
-    private var startTime: CFTimeInterval = 0
     private var currentPlugin: ShaderPlugin?
     private var currentDisplayID: CGDirectDisplayID = CGMainDisplayID()
     /// эффект накрывает весь дисплей, а не рамку чужого окна: только такой оверлей
@@ -220,6 +230,8 @@ final class OverlayController {
         capture = setup.controller
         captureRequest = request
         captureProfile = setup.profile
+        // такта здесь не будет, но время шейдера должно идти: кадры захвата несут его сами
+        setAnimating(plugin.isAnimated)
     }
 
     func hide() {
@@ -300,6 +312,7 @@ final class OverlayController {
                 capture = setup.controller
                 self.captureRequest = request
                 captureProfile = setup.profile
+                setAnimating(request.plugin.isAnimated)
             } catch {
                 Log.capture.error("could not restart capture: \(error.localizedDescription)")
                 request.onStop(error)
@@ -341,11 +354,10 @@ final class OverlayController {
         view.parameters = parameters
         view.sourceRect = sourceRect(for: frame, in: target.frame)
         view.expectsSource = plugin.manifest.level == .capture
-        view.time = 0
+        view.startTime = CACurrentMediaTime()
 
         window.orderFrontRegardless()
         self.window = window
-        startTime = CACurrentMediaTime()
         Log.overlay.info(
             "overlay shown: \(plugin.identifier, privacy: .public) at \(String(describing: frame), privacy: .public), screen \(String(describing: target.frame), privacy: .public)"
         )
@@ -382,7 +394,15 @@ final class OverlayController {
 
     private func setAnimating(_ animating: Bool) {
         stopTicking()
-        guard animating, !isPaused, !reduceMotion, let view = window?.contentView else { return }
+        guard let view = window?.contentView as? OverlayView else { return }
+        // системная настройка «уменьшать движение» и сон экрана останавливают само
+        // время шейдера, а не только такт: иначе уровень 3 продолжал бы анимировать
+        // по кадрам захвата, которые приходят независимо от нас
+        view.isAnimated = animating && !isPaused && !reduceMotion
+
+        // уровень 3 перерисовывается на каждом кадре захвата и второго такта не просит:
+        // тик всё равно рисовать нечем, source у него пустой
+        guard view.isAnimated, capture == nil else { return }
 
         // режим энергосбережения означает, что человек считает проценты батареи,
         // а не кадры ретро-эффекта
@@ -399,15 +419,8 @@ final class OverlayController {
         displayLink = nil
     }
 
-    /// время шейдера идёт по кругу раз в сутки: дальше оно перестаёт помещаться
-    /// во float32 без потери шага между кадрами, а скачок фазы раз в сутки не виден
-    private static let timeWrap: CFTimeInterval = 86_400
-
     @objc private func tick() {
-        guard let view = window?.contentView as? OverlayView else { return }
-        view.time = (CACurrentMediaTime() - startTime)
-            .truncatingRemainder(dividingBy: Self.timeWrap)
-        view.render(source: nil)
+        (window?.contentView as? OverlayView)?.render(source: nil)
     }
 
     // MARK: - реакции на систему
