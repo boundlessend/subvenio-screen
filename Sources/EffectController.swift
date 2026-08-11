@@ -18,6 +18,7 @@ final class EffectController: ObservableObject {
     private static let selectedDisplayKey = "selectedDisplay"
     private static let captureScaleKey = "capture.scale"
     private static let captureFrameRateKey = "capture.frameRateCap"
+    private static let windowModeKey = "windowMode"
 
     @Published private(set) var plugins: [ShaderPlugin] = []
     @Published private(set) var loadErrors: [PluginError] = []
@@ -49,9 +50,10 @@ final class EffectController: ObservableObject {
     }
 
     /// эффект только в области выбранного окна вместо всего дисплея
-    @Published var windowModeEnabled = false {
+    @Published var windowModeEnabled: Bool {
         didSet {
             guard windowModeEnabled != oldValue else { return }
+            UserDefaults.standard.set(windowModeEnabled, forKey: Self.windowModeKey)
             if isEnabled {
                 enable()
             } else {
@@ -90,18 +92,25 @@ final class EffectController: ObservableObject {
     /// номер поколения включения: пока асинхронный старт уровня 3 идёт, эффект могли
     /// выключить. состояние «включено» с чужим номером означало бы работу без окна
     private var enableGeneration = 0
+    /// неудача установки встроенных пресетов: она случается один раз за запуск,
+    /// а список ошибок пересобирается на каждое чтение папки
+    private var installError: PluginError?
+    /// эффект сняли, потому что дисплей отключили: его вернут, когда монитор придёт назад
+    private var waitingForDisplay = false
 
     init() {
         let defaults = UserDefaults.standard
         let storedDisplay = defaults.integer(forKey: Self.selectedDisplayKey)
         selectedDisplayID = storedDisplay > 0 ? CGDirectDisplayID(storedDisplay) : CGMainDisplayID()
         selectedIdentifier = defaults.string(forKey: Self.selectedShaderKey)
+        windowModeEnabled = defaults.bool(forKey: Self.windowModeKey)
         let storedScale = defaults.double(forKey: Self.captureScaleKey)
         captureQuality = CaptureQuality(
             scale: storedScale > 0 ? storedScale : 1,
             frameRateCap: defaults.integer(forKey: Self.captureFrameRateKey)
         )
 
+        installBundled()
         reload()
         watcher = PluginWatcher(directory: shadersDirectory()) { [weak self] in
             self?.reload()
@@ -116,7 +125,12 @@ final class EffectController: ObservableObject {
 
     /// без отката на первый попавшийся пресет: выбор пользователя не подменяется молча
     var selectedPlugin: ShaderPlugin? {
-        guard let selectedIdentifier else { return plugins.first }
+        guard let selectedIdentifier else {
+            // на свежей установке выбора ещё нет, и он достаётся алфавиту. пусть
+            // достанется самому дешёвому уровню: иначе первое же нажатие хоткея
+            // на новой машине упирается в запрос разрешения на запись экрана
+            return plugins.first { $0.manifest.level == .gammaLUT } ?? plugins.first
+        }
         return plugins.first { $0.identifier == selectedIdentifier }
     }
 
@@ -126,17 +140,24 @@ final class EffectController: ObservableObject {
 
     // MARK: - плагины и параметры
 
-    func reload() {
-        let directory = shadersDirectory()
-        var errors: [PluginError] = []
+    /// встроенные пресеты ставятся один раз за запуск. делать это на каждое чтение папки
+    /// значило бы писать в неё в ответ на чужую запись: наблюдатель разбудил бы себя сам
+    private func installBundled() {
         do {
-            try installBundledPlugins(into: directory)
+            try installBundledPlugins(into: shadersDirectory())
+            installError = nil
         } catch {
-            errors.append(.installFailed(underlying: error))
+            installError = .installFailed(underlying: error)
         }
-        let loaded = loadPlugins(from: directory)
+    }
+
+    func reload() {
+        // редакция выбранного пресета до перечитывания папки: по ней видно, изменил ли
+        // человек шейдер, который прямо сейчас лежит на экране
+        let previous = selectedPlugin
+        let loaded = loadPlugins(from: shadersDirectory())
         plugins = loaded.plugins
-        loadErrors = errors + loaded.errors
+        loadErrors = [installError].compactMap { $0 } + loaded.errors
 
         let live = Set(plugins.map(\.identifier))
         overlay.forgetPipelines(keeping: live)
@@ -145,6 +166,13 @@ final class EffectController: ObservableObject {
         // по такому списку стёрла бы значения ползунков у всех
         if !plugins.isEmpty, loadErrors.isEmpty {
             settings.forget(outside: live)
+        }
+
+        // шейдер переписали на диске: пайплайн собран при включении и сам новую
+        // редакцию не подхватит, а превью в настройках уже показывает её
+        if isEnabled, let previous, let current = selectedPlugin, current != previous {
+            Log.plugins.info("preset changed on disk, restarting: \(current.identifier, privacy: .public)")
+            enable()
         }
     }
 
@@ -224,6 +252,8 @@ final class EffectController: ObservableObject {
 
     func toggle() {
         if isEnabled {
+            // выключил человек, а не пропавший монитор: ждать возвращения нечего
+            waitingForDisplay = false
             disable()
         } else {
             enable()
@@ -232,6 +262,7 @@ final class EffectController: ObservableObject {
 
     func enable() {
         guard !isStarting else { return }
+        waitingForDisplay = false
         guard let plugin = selectedPlugin else {
             reportMissingPlugin()
             return
@@ -367,12 +398,24 @@ final class EffectController: ObservableObject {
 
     @objc private func screensDidChange() {
         displays = availableDisplays()
-        guard isEnabled, screen(for: selectedDisplayID) == nil else { return }
-        disable()
-        report(
-            title: String(localized: "Effect turned off"),
-            message: String(localized: "The display this effect was set to is no longer connected.")
-        )
+        let target = screen(for: selectedDisplayID)
+
+        if isEnabled, target == nil {
+            disable()
+            // выключили не по просьбе человека, а потому что рисовать стало некуда
+            waitingForDisplay = true
+            report(
+                title: String(localized: "Effect turned off"),
+                message: String(localized: "The display this effect was set to is no longer connected.")
+            )
+            return
+        }
+        // монитор вернулся: отстыкованный ноутбук не повод заставлять человека
+        // включать эффект заново каждый раз
+        guard waitingForDisplay, target != nil else { return }
+        waitingForDisplay = false
+        clearStatus()
+        enable()
     }
 
     private func startCapture(plugin: ShaderPlugin, frame: CGRect) {

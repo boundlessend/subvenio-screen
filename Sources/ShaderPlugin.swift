@@ -19,7 +19,7 @@ enum RenderLevel: Int, Decodable, CaseIterable {
     }
 }
 
-struct ShaderParameter: Decodable {
+struct ShaderParameter: Decodable, Equatable {
     let name: String
     let min: Float
     let max: Float
@@ -28,7 +28,7 @@ struct ShaderParameter: Decodable {
 
 /// поканальное преобразование для уровня 1: смешивать каналы гамма-таблица не умеет,
 /// поэтому здесь только тинт, гамма, инверсия и клиппинг
-struct GammaSettings: Decodable {
+struct GammaSettings: Decodable, Equatable {
     let tint: [Float]
     let gamma: Float
     let invert: Bool
@@ -36,7 +36,7 @@ struct GammaSettings: Decodable {
     let whitePoint: Float
 }
 
-struct ShaderManifest: Decodable {
+struct ShaderManifest: Decodable, Equatable {
     let name: String
     let level: RenderLevel
     let animated: Bool?
@@ -49,13 +49,15 @@ struct ShaderManifest: Decodable {
 
 /// уровень 1 работает без шейдера, уровень 2 без гамма-таблиц: разные наборы данных,
 /// поэтому не опциональные поля, а два случая
-enum PluginKind {
+enum PluginKind: Equatable {
     case gamma(GammaSettings)
     case overlay(source: String)
     case capture(source: String)
 }
 
-struct ShaderPlugin {
+/// равенство по содержимому, а не по идентификатору: правку шейдера на диске
+/// видно только так, и по ней работающий эффект перезапускается на новую редакцию
+struct ShaderPlugin: Equatable {
     let manifest: ShaderManifest
     let kind: PluginKind
     /// имя папки, используется как стабильный идентификатор в UserDefaults
@@ -195,7 +197,11 @@ private func installedDigestKey(_ identifier: String) -> String {
 /// копирует недостающие встроенные пресеты и обновляет те, которых пользователь не касался.
 /// без обновления исправленный шейдер новой версии не доезжал бы до тех, у кого папка уже
 /// есть; правки узнаются по отпечатку, записанному в момент установки, и остаются на месте
-func installBundledPlugins(into directory: URL, from bundle: Bundle = .main) throws {
+func installBundledPlugins(
+    into directory: URL,
+    from bundle: Bundle = .main,
+    defaults: UserDefaults = .standard
+) throws {
     guard let bundled = bundle.url(forResource: "Shaders", withExtension: nil) else {
         throw CocoaError(.fileNoSuchFile)
     }
@@ -206,13 +212,16 @@ func installBundledPlugins(into directory: URL, from bundle: Bundle = .main) thr
         includingPropertiesForKeys: nil,
         options: [.skipsHiddenFiles]
     )
-    let defaults = UserDefaults.standard
     for entry in entries {
         let identifier = entry.lastPathComponent
         let destination = directory.appendingPathComponent(identifier)
         let key = installedDigestKey(identifier)
 
         guard FileManager.default.fileExists(atPath: destination.path) else {
+            // отпечаток есть, а папки нет: пресет удалили руками, и это выбор,
+            // а не пропажа. класть его обратно на каждый запуск значило бы спорить
+            // с человеком; вернуть все встроенные умеет кнопка в настройках
+            guard defaults.string(forKey: key) == nil else { continue }
             try FileManager.default.copyItem(at: entry, to: destination)
             defaults.set(pluginDigest(destination), forKey: key)
             continue
@@ -237,7 +246,11 @@ func installBundledPlugins(into directory: URL, from bundle: Bundle = .main) thr
 
 /// возвращает встроенные пресеты к виду, в котором они приехали с приложением.
 /// вызывается только по явной просьбе: правки пользователя здесь теряются
-func restoreBundledPlugins(into directory: URL, from bundle: Bundle = .main) throws {
+func restoreBundledPlugins(
+    into directory: URL,
+    from bundle: Bundle = .main,
+    defaults: UserDefaults = .standard
+) throws {
     guard let bundled = bundle.url(forResource: "Shaders", withExtension: nil) else {
         throw CocoaError(.fileNoSuchFile)
     }
@@ -254,7 +267,7 @@ func restoreBundledPlugins(into directory: URL, from bundle: Bundle = .main) thr
             try FileManager.default.removeItem(at: destination)
         }
         try FileManager.default.copyItem(at: entry, to: destination)
-        UserDefaults.standard.set(
+        defaults.set(
             pluginDigest(destination),
             forKey: installedDigestKey(entry.lastPathComponent)
         )
@@ -294,7 +307,13 @@ func loadPlugins(from directory: URL) -> (plugins: [ShaderPlugin], errors: [Plug
         }
     }
 
-    return (plugins, errors)
+    // порядок в списке задаёт видимое имя, а не имя папки: "Phosphor Terminal"
+    // лежит в AmberTerminal и без этого встаёт первым ни по какому видимому признаку.
+    // localizedStandardCompare ставит "1-bit Dither" перед буквами, как это делает Finder
+    let sorted = plugins.sorted {
+        $0.manifest.name.localizedStandardCompare($1.manifest.name) == .orderedAscending
+    }
+    return (sorted, errors)
 }
 
 private func pluginKind(
