@@ -348,6 +348,42 @@ final class BundledShaderTests: XCTestCase {
     }
 }
 
+/// заготовка своего пресета: она уезжает человеку под редактирование, поэтому
+/// обязана открываться и компилироваться ровно в том виде, в каком её положили
+final class PresetTemplateTests: XCTestCase {
+    private var directory: URL!
+
+    override func setUpWithError() throws {
+        directory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("SubvenioScreenTemplate-\(UUID().uuidString)")
+        addTeardownBlock { [directory] in
+            try? FileManager.default.removeItem(at: directory!)
+        }
+    }
+
+    func testTemplateLoadsAndCompiles() throws {
+        _ = try createPresetFromTemplate(in: directory)
+        let loaded = loadPlugins(from: directory)
+
+        XCTAssertTrue(loaded.errors.isEmpty, "\(loaded.errors.map(\.localizedDescription))")
+        let plugin = try XCTUnwrap(loaded.plugins.first)
+
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw XCTSkip("на этой машине нет устройства Metal")
+        }
+        XCTAssertNoThrow(try makePipeline(device: device, plugin: plugin))
+    }
+
+    /// вторая кнопка подряд не должна переписывать первую заготовку
+    func testASecondTemplateGetsItsOwnFolder() throws {
+        let first = try createPresetFromTemplate(in: directory)
+        let second = try createPresetFromTemplate(in: directory)
+
+        XCTAssertNotEqual(first, second)
+        XCTAssertEqual(loadPlugins(from: directory).plugins.count, 2)
+    }
+}
+
 final class LocalizedTextTests: XCTestCase {
     private func decode(_ json: String) throws -> LocalizedText {
         try JSONDecoder().decode(LocalizedText.self, from: Data(json.utf8))
