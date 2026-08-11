@@ -4,7 +4,7 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 each one ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
-## Unreleased
+## 1.5.0
 
 ### Added
 
@@ -17,8 +17,8 @@ each one ships as a disk image on the
   picture; **Projector** breathes the lamp on two mismatched frequencies and
   drops the corners into shadow. Reading the screen: **Phosphor Terminal** pours
   luminance into one phosphor - amber by default, P1 green a slider away -
-  **Aperture Grille** gives every third column its
-  own phosphor, **Halation** spreads light past the edge of what emits it,
+  **Aperture Grille** gives every third column its own phosphor, **Halation**
+  spreads light past the edge of what emits it,
   **Chromatic Aberration** diverges the channels towards the edges, and
   **Halftone**, **1-bit Dither** and **Game Boy** quantise the picture to dots,
   to two shades and to the four DMG greens.
