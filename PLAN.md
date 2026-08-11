@@ -83,7 +83,7 @@ white" with an explicit warning in the UI, never as the foundation.
 16. **The preview runs on a bundled picture, not on the screen.** Reading the
     real screen for a thumbnail would demand the Screen Recording permission in
     the one window that is supposed to explain the permissions, and would demand
-    it for the five presets that need nothing today. The picture is drawn to
+    it for the seven presets that need nothing today. The picture is drawn to
     carry what the presets act on: a full brightness range for gamma and
     clipping, colour for tint and desaturation, and fine texture for grain and
     scanlines. Levels 2 and 3 preview through the same shader and the same Metal
@@ -223,7 +223,7 @@ the kind of answer an eye cannot give.
 
 ## Preset backlog
 
-Ideas for presets beyond the six that ship. Each one was written as a real
+Ideas for presets beyond the nine that ship. Each one was written as a real
 fragment function and rendered offline against the bundled preview picture
 before being written down here, so what is listed is a preset waiting for a
 folder rather than a sketch. The rendering level is the first thing to look at:
@@ -231,25 +231,19 @@ it decides what the effect costs and whether it asks for anything.
 
 Level 1, free and covering the cursor and the menu bar:
 
-- **Faded Photo** - lifted black, softened white, a warm tint. Sepia's relative,
-  but it fades rather than turning brown.
 - **Moonlight** - blue and dimmed, the day-for-night trick from film.
 
 Level 2, one drawn layer and no permission:
 
-- **Dust & Scratches** - vertical scratches on the emulsion and specks in the
-  gate, each living exactly one film frame. Fills a real gap: there is grain but
-  no wear, and wear is what reads as film rather than as a noisy picture.
 - **Projector** - the lamp breathing and the corners falling into shadow. The
   flicker has to stay weak; anything that pulses is charming for a minute and
   tiring for an hour.
 
 Level 3, reads the screen:
 
-- **Amber Terminal** and **Green Phosphor** - luminance without colour, poured
-  into amber or into P1 green, with the bright parts bleeding vertically. Two
-  presets that differ by one colour vector, so a single preset with a hue
-  parameter may be the honest form.
+- **Green Phosphor** - the shipped Amber Terminal with a P1 green vector instead
+  of an amber one. Two presets differing by one constant is a poor trade; a hue
+  parameter on Amber Terminal is the honest form, and it costs one slider.
 - **Aperture Grille** - every third column given to its own phosphor, the way a
   Trinitron looks up close.
 - **Halation** - light spreading past the edge of what emits it. The most
@@ -264,10 +258,12 @@ Level 3, reads the screen:
   quantised.
 - **Chromatic Aberration** - channels diverging with distance from the centre.
 
-Suggested order: Dust & Scratches first, because level 2 costs nothing and it
-fills the gap next to Film Grain; then Amber Terminal, the most recognisable
-image and the simplest level 3 shader; then Faded Photo, which is ten lines of
-manifest and no shader at all.
+The first three of this list - Dust & Scratches, Amber Terminal and Faded Photo -
+now ship. What is left divides in two: Projector, Moonlight and Aperture Grille
+extend what the app already does, while Halation, 1-bit Dither, Halftone, Game
+Boy and Chromatic Aberration each turn the screen into something you look at
+rather than work on. Nine presets is already a long menu, so the second group is
+worth adding only if the menu learns to group them.
 
 **A level 2 layer cannot dim one channel.** The overlay composites through a
 single alpha, so a coloured mask that leaves one channel alone and darkens the

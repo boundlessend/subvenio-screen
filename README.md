@@ -18,17 +18,17 @@ sepia look over your whole desktop - every app, the Dock, the menu bar. One
 hotkey turns it on, the same hotkey turns it off, and the effect is back exactly
 where you left it after a restart.
 
-<p align="center"><img src="assets/presets.png" alt="The six bundled presets"></p>
+<p align="center"><img src="assets/presets.png" alt="The nine bundled presets"></p>
 
-The six presets that ship with the app, each rendered through the same shader the
-screen gets. The effect itself cannot be screenshotted: the overlay is excluded
+The nine presets that ship with the app, a row per rendering level, each rendered
+through the same shader the screen gets. The effect itself cannot be screenshotted: the overlay is excluded
 from screen capture on purpose, so these are offline renders of the picture the
 settings window previews on.
 
 ## Features
 
-- **Six presets out of the box**: Invert, Sepia, Scanlines, Film Grain, VHS and
-  honest Black and White.
+- **Nine presets out of the box**: Invert, Sepia, Faded Photo, Scanlines, Film
+  Grain, VHS, Dust & Scratches, honest Black and White and Amber Terminal.
 - **One global hotkey** for the whole screen, recorded in settings. No
   Accessibility permission needed.
 - **Live tuning.** Every preset has its own sliders - grain strength, vignette,
@@ -83,15 +83,18 @@ still a manual step: a new version means a new disk image from Releases.
 |--------|--------------|------|
 | Invert | inverts the picture, cursor and menu bar included | free |
 | Sepia | warm tint with lifted blacks | free |
+| Faded Photo | washed-out warm tint, a photo left in the sun | free |
 | Scanlines | CRT lines over the screen | one drawn layer |
 | Film Grain | flickering grain with a vignette | one drawn layer |
 | VHS | purple tint, line noise and a drifting band | one drawn layer |
+| Dust & Scratches | film wear: scratches and specks, each one frame long | one drawn layer |
 | Black and White | true desaturation, not a tint | reads the screen |
+| Amber Terminal | luminance poured into amber phosphor | reads the screen |
 
-Only **Black and White** needs to read what is on screen, so only it asks for
-the Screen Recording permission - and only the first time you turn it on by
-hand. Everything else works without any permission at all. Refusing leaves the
-other five presets fully usable.
+Only **Black and White** and **Amber Terminal** need to read what is on screen,
+so only they ask for the Screen Recording permission - and only the first time
+you turn one on by hand. Everything else works without any permission at all.
+Refusing leaves the other seven presets fully usable.
 
 Captured frames live in memory just long enough to be drawn. Nothing is written
 to disk and nothing leaves the machine.
@@ -104,9 +107,9 @@ there; save a file and the menu updates itself, no restart. A broken preset
 shows the actual error instead of quietly disappearing. A preset can name its
 own menu bar icon, and gets one for its rendering level if it does not.
 
-The six bundled presets are yours to edit. An edited one stays as you left it
+The nine bundled presets are yours to edit. An edited one stays as you left it
 even when a new version of the app ships a different version of the same preset,
-and **Restore bundled presets** in settings puts all six back the way they came.
+and **Restore bundled presets** in settings puts them all back the way they came.
 
 The format is described in [DEVELOPMENT.md](DEVELOPMENT.md#writing-a-shader).
 

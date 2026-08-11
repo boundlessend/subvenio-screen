@@ -6,6 +6,17 @@ each one ships as a disk image on the
 
 ## Unreleased
 
+### Added
+
+- **Three presets, one per rendering level.** **Dust & Scratches** puts film wear
+  over the screen - vertical scratches and specks in the gate, each living
+  exactly one film frame - which is what Film Grain was missing to read as film
+  rather than as a noisy picture. **Amber Terminal** pours the screen's luminance
+  into amber phosphor and lets the bright parts bleed vertically; like Black and
+  White it reads the screen, so it asks for the Screen Recording permission.
+  **Faded Photo** lifts the black and softens the white under a warm tint, a
+  photo left in the sun, and costs nothing at all.
+
 ### Changed
 
 - **Settings became five tabs in a toolbar**, the standard shape of a macOS

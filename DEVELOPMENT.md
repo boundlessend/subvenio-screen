@@ -83,7 +83,7 @@ button. Bundled presets are copied there on first launch, folder by folder. On
 every later launch each bundled preset is fingerprinted (SHA-256 over the folder
 contents) and compared with the fingerprint recorded when it was installed: an
 untouched copy is replaced by the version shipped with the app, an edited one is
-left exactly as it is. "Restore bundled presets" in settings overwrites all six
+left exactly as it is. "Restore bundled presets" in settings overwrites them all
 regardless. The folder is watched, so a new or edited preset is picked up without
 a restart.
 
