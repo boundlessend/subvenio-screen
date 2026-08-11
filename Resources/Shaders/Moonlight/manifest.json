@@ -1,0 +1,16 @@
+{
+  "name": "Moonlight",
+  "level": 1,
+  "icon": "moon.stars",
+  "gamma": {
+    "tint": [
+      0.66,
+      0.8,
+      1.0
+    ],
+    "gamma": 1.45,
+    "invert": false,
+    "blackPoint": 0.0,
+    "whitePoint": 0.82
+  }
+}

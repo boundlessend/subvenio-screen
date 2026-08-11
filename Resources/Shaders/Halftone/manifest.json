@@ -1,0 +1,20 @@
+{
+  "name": "Halftone",
+  "level": 3,
+  "icon": "circle.grid.3x3.fill",
+  "animated": false,
+  "parameters": [
+    {
+      "name": "cellSize",
+      "min": 2,
+      "max": 16,
+      "default": 6
+    },
+    {
+      "name": "contrast",
+      "min": 0.5,
+      "max": 2,
+      "default": 1.2
+    }
+  ]
+}

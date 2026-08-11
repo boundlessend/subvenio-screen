@@ -1,0 +1,20 @@
+{
+  "name": "Projector",
+  "level": 2,
+  "icon": "sun.max",
+  "animated": true,
+  "parameters": [
+    {
+      "name": "flickerStrength",
+      "min": 0,
+      "max": 1,
+      "default": 0.5
+    },
+    {
+      "name": "vignetteStrength",
+      "min": 0,
+      "max": 1,
+      "default": 0.55
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Chromatic Aberration",
+  "level": 3,
+  "icon": "camera.aperture",
+  "animated": false,
+  "parameters": [
+    {
+      "name": "amount",
+      "min": 0,
+      "max": 0.05,
+      "default": 0.016
+    },
+    {
+      "name": "edgeBias",
+      "min": 0,
+      "max": 1,
+      "default": 1.0
+    }
+  ]
+}

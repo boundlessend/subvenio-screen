@@ -1,0 +1,14 @@
+{
+  "name": "Game Boy",
+  "level": 3,
+  "icon": "gamecontroller",
+  "animated": false,
+  "parameters": [
+    {
+      "name": "contrast",
+      "min": 0.5,
+      "max": 3,
+      "default": 1.5
+    }
+  ]
+}

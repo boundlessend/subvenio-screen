@@ -1,0 +1,14 @@
+{
+  "name": "1-bit Dither",
+  "level": 3,
+  "icon": "checkerboard.rectangle",
+  "animated": false,
+  "parameters": [
+    {
+      "name": "contrast",
+      "min": 0.5,
+      "max": 2,
+      "default": 1.15
+    }
+  ]
+}

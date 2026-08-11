@@ -1,0 +1,20 @@
+{
+  "name": "Aperture Grille",
+  "level": 3,
+  "icon": "rectangle.split.3x1",
+  "animated": false,
+  "parameters": [
+    {
+      "name": "maskStrength",
+      "min": 0,
+      "max": 1,
+      "default": 0.34
+    },
+    {
+      "name": "brightness",
+      "min": 1,
+      "max": 2,
+      "default": 1.22
+    }
+  ]
+}
