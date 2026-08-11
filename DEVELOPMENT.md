@@ -110,6 +110,10 @@ becomes a slider, so both are validated before anything is compiled.
 optional, and a name the system does not know falls back to a symbol for the
 rendering level, so a typo costs a generic icon rather than an error.
 
+`level` decides more than the backend: the menu and the settings picker group
+presets by it, under Free, One drawn layer and Reads the screen. A preset lands
+in the group its level names, without saying anything about it.
+
 `shader.metal` holds only the fragment function. The engine prepends a prelude
 with the vertex function, the uniform struct and shared helpers, and turns
 manifest parameters into named macros, so the shader reads `scanlineStrength`

@@ -8,14 +8,24 @@ each one ships as a disk image on the
 
 ### Added
 
-- **Three presets, one per rendering level.** **Dust & Scratches** puts film wear
-  over the screen - vertical scratches and specks in the gate, each living
-  exactly one film frame - which is what Film Grain was missing to read as film
-  rather than as a noisy picture. **Amber Terminal** pours the screen's luminance
-  into amber phosphor and lets the bright parts bleed vertically; like Black and
-  White it reads the screen, so it asks for the Screen Recording permission.
-  **Faded Photo** lifts the black and softens the white under a warm tint, a
-  photo left in the sun, and costs nothing at all.
+- **Eleven presets, taking the catalogue from six to seventeen.** Free, applied
+  in scanout: **Faded Photo** lifts the black and softens the white under a warm
+  tint, a photo left in the sun; **Moonlight** is the day-for-night trick from
+  film. One drawn layer: **Dust & Scratches** puts film wear over the screen -
+  vertical scratches and specks in the gate, each living exactly one film frame -
+  which is what Film Grain was missing to read as film rather than as a noisy
+  picture; **Projector** breathes the lamp on two mismatched frequencies and
+  drops the corners into shadow. Reading the screen: **Amber Terminal** pours
+  luminance into amber phosphor, **Aperture Grille** gives every third column its
+  own phosphor, **Halation** spreads light past the edge of what emits it,
+  **Chromatic Aberration** diverges the channels towards the edges, and
+  **Halftone**, **1-bit Dither** and **Game Boy** quantise the picture to dots,
+  to two shades and to the four DMG greens.
+- **The preset list is grouped by rendering level**, in the menu bar and in
+  settings alike: Free, One drawn layer, Reads the screen. Seventeen names in a
+  row read as a directory listing, and the level is what the choice actually
+  turns on - what the preset costs and whether it will ask for the Screen
+  Recording permission.
 
 ### Changed
 

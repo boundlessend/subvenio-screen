@@ -80,10 +80,19 @@ white" with an explicit warning in the UI, never as the foundation.
    this window exists to make easy. The toolbar itself is drawn by the system
    through `NSWindow.toolbarStyle = .preference`, so the tabs cost no drawing
    code and behave like every other preferences window on the machine.
+20. **Presets are grouped by rendering level, not sorted by name.** Seventeen
+    names in a row read as a directory listing, and the name of a preset says
+    nothing about what picking it will cost. The level does: free, one drawn
+    layer, or a request for the Screen Recording permission. The menu bar uses
+    `NSMenuItem.sectionHeader`, which macOS 14 draws itself, and the settings
+    picker uses the same three headings, so both lists answer the same question
+    in the same order. The headings name the cost rather than the mechanism -
+    "Reads the screen", not "ScreenCaptureKit" - because the cost is what the
+    choice turns on.
 16. **The preview runs on a bundled picture, not on the screen.** Reading the
     real screen for a thumbnail would demand the Screen Recording permission in
     the one window that is supposed to explain the permissions, and would demand
-    it for the seven presets that need nothing today. The picture is drawn to
+    it for the nine presets that need nothing today. The picture is drawn to
     carry what the presets act on: a full brightness range for gamma and
     clipping, colour for tint and desaturation, and fine texture for grain and
     scanlines. Levels 2 and 3 preview through the same shader and the same Metal
@@ -221,54 +230,37 @@ per frame, slow enough to look deliberate. Rendering two frames offline and
 comparing them under every small shift showed a 100% match at (-1, -1), which is
 the kind of answer an eye cannot give.
 
-## Preset backlog
+## Presets
 
-Ideas for presets beyond the nine that ship. Each one was written as a real
-fragment function and rendered offline against the bundled preview picture
-before being written down here, so what is listed is a preset waiting for a
-folder rather than a sketch. The rendering level is the first thing to look at:
-it decides what the effect costs and whether it asks for anything.
+Seventeen presets ship, and the backlog that named them is empty. Each one was
+written as a real fragment function and rendered offline against the bundled
+preview picture before it got a folder, so nothing here was accepted on the
+strength of a description. The rendering level is the first thing to look at:
+it decides what the effect costs, whether it asks for anything, and which group
+of the menu it lands in.
 
-Level 1, free and covering the cursor and the menu bar:
+Free, and covering the cursor and the menu bar: Invert, Sepia, Faded Photo,
+Moonlight. One drawn layer and no permission: Scanlines, Film Grain, VHS,
+Dust & Scratches, Projector. Reading the screen: Black and White, Amber
+Terminal, Aperture Grille, Halation, Chromatic Aberration, Halftone, 1-bit
+Dither, Game Boy.
 
-- **Moonlight** - blue and dimmed, the day-for-night trick from film.
-
-Level 2, one drawn layer and no permission:
-
-- **Projector** - the lamp breathing and the corners falling into shadow. The
-  flicker has to stay weak; anything that pulses is charming for a minute and
-  tiring for an hour.
-
-Level 3, reads the screen:
-
-- **Green Phosphor** - the shipped Amber Terminal with a P1 green vector instead
-  of an amber one. Two presets differing by one constant is a poor trade; a hue
-  parameter on Amber Terminal is the honest form, and it costs one slider.
-- **Aperture Grille** - every third column given to its own phosphor, the way a
-  Trinitron looks up close.
-- **Halation** - light spreading past the edge of what emits it. The most
-  expensive of the set and the only one visible on any content at all.
-- **1-bit Dither** - black and white with an ordered Bayer pattern between them,
-  the first Macintosh. Small text becomes hard to read, so it is an effect to
-  look at rather than to work under.
-- **Halftone** - newspaper printing, dot size following darkness, grid turned 45
-  degrees.
-- **Game Boy** - the four DMG shades and dithering between them. Four steps are
-  too few for an ordinary screen, so luminance has to be stretched before it is
-  quantised.
-- **Chromatic Aberration** - channels diverging with distance from the centre.
-
-The first three of this list - Dust & Scratches, Amber Terminal and Faded Photo -
-now ship. What is left divides in two: Projector, Moonlight and Aperture Grille
-extend what the app already does, while Halation, 1-bit Dither, Halftone, Game
-Boy and Chromatic Aberration each turn the screen into something you look at
-rather than work on. Nine presets is already a long menu, so the second group is
-worth adding only if the menu learns to group them.
+The last three quantise the screen to two shades or four, which makes small
+text hard to read. They are effects to look at rather than to work under, and
+the README says so rather than the menu: a preset that warns about itself every
+time it is opened is a preset nobody picks twice.
 
 **A level 2 layer cannot dim one channel.** The overlay composites through a
 single alpha, so a coloured mask that leaves one channel alone and darkens the
 other two is impossible there. Anything per-channel is level 3 by construction,
 which is why Aperture Grille is not the cheap effect it looks like.
+
+Still open:
+
+- **Green Phosphor.** The shipped Amber Terminal with a P1 green vector instead
+  of an amber one. Two presets differing by one constant is a poor trade, so the
+  honest form is a hue parameter on Amber Terminal, which costs one slider and
+  no new folder.
 
 Rejected on purpose:
 
