@@ -92,7 +92,7 @@ still a manual step: a new version means a new disk image from Releases.
 | Dust & Scratches | film wear: scratches and specks, each one frame long | one drawn layer |
 | Projector | the lamp breathing, the corners in shadow | one drawn layer |
 | Black and White | true desaturation, not a tint | reads the screen |
-| Amber Terminal | luminance poured into amber phosphor | reads the screen |
+| Phosphor Terminal | luminance poured into one phosphor, amber or green | reads the screen |
 | Aperture Grille | every third column to its own phosphor | reads the screen |
 | Halation | light spreading past the edge of what emits it | reads the screen |
 | Chromatic Aberration | channels diverging towards the edges | reads the screen |

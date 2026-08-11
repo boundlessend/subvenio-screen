@@ -255,12 +255,13 @@ single alpha, so a coloured mask that leaves one channel alone and darkens the
 other two is impossible there. Anything per-channel is level 3 by construction,
 which is why Aperture Grille is not the cheap effect it looks like.
 
-Still open:
-
-- **Green Phosphor.** The shipped Amber Terminal with a P1 green vector instead
-  of an amber one. Two presets differing by one constant is a poor trade, so the
-  honest form is a hue parameter on Amber Terminal, which costs one slider and
-  no new folder.
+**Green Phosphor is a slider, not a preset.** A second terminal differing from
+the first by one colour vector would be two folders maintained as one. Phosphor
+Terminal takes a hue instead: the colour is built on the hue circle at a fixed
+saturation, amber at 0.09 and P1 green at 0.36, and the name stopped saying
+amber once it could say both. The folder is still `AmberTerminal`, because
+renaming it would leave the old one behind in everybody's shaders folder and
+show the preset twice; `Grayscale` holding "Black and White" is the same case.
 
 Rejected on purpose:
 
