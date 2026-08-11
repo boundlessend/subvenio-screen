@@ -11,9 +11,12 @@ Xcode project is generated from `project.yml` and is not tracked in git.
 
 ```sh
 make run      # generate, build, launch
-make test     # unit tests for the pure parts
+make test     # pure transforms, preset installation, every bundled shader
 make release  # signed Release build packaged as a .dmg in dist/
 ```
+
+CI additionally runs `swiftlint lint --strict`, so a warning fails the build.
+What `.swiftlint.yml` turns off is turned off with the reason next to it.
 
 `make release` needs [create-dmg](https://github.com/sindresorhus/create-dmg)
 (`brew install create-dmg`). Releases are versioned by hand: bump
@@ -50,7 +53,7 @@ Sources/            Swift, one file per concern
   PluginWatcher     FSEvents watch over the plugin folder
   WindowTracking    window-scoped mode
   Logging           os.Logger categories
-Tests/              gamma tables, manifest validation, uniform layout, geometry
+Tests/              pure transforms, preset installation, bundled shaders
 Resources/Shaders/  bundled presets
 assets/             images used by the README
 scripts/release.sh  Release build packaged into dist/
@@ -79,13 +82,18 @@ Presets live in the app's sandbox container:
 ```
 
 Nobody should have to type that, so settings has an "Open shaders folder"
-button. Bundled presets are copied there on first launch, folder by folder. On
+button, and "New preset from template" next to it writes a working level 2
+preset there and shows it in Finder.
+
+Bundled presets are copied to that folder on first launch, folder by folder. On
 every later launch each bundled preset is fingerprinted (SHA-256 over the folder
 contents) and compared with the fingerprint recorded when it was installed: an
 untouched copy is replaced by the version shipped with the app, an edited one is
-left exactly as it is. "Restore bundled presets" in settings overwrites them all
-regardless. The folder is watched, so a new or edited preset is picked up without
-a restart.
+left exactly as it is, and one that is gone stays gone - deleting a preset is a
+decision, not an accident to repair. "Restore bundled presets" in settings puts
+them all back regardless. The folder is watched, so a new or edited preset is
+picked up without a restart, and an edit to the preset currently on screen
+restarts the effect on the new version.
 
 A preset is a folder with `manifest.json` and, for levels 2 and 3,
 `shader.metal`:
@@ -93,11 +101,19 @@ A preset is a folder with `manifest.json` and, for levels 2 and 3,
 ```json
 {
   "name": "Scanlines",
+  "description": {
+    "en": "The lines of a CRT over the screen, with the corners in shadow.",
+    "ru": "Строки кинескопа поверх экрана, углы уходят в тень."
+  },
   "level": 2,
   "icon": "line.3.horizontal",
   "animated": false,
   "parameters": [
-    { "name": "scanlineStrength", "min": 0, "max": 1, "default": 0.22 }
+    {
+      "name": "scanlineStrength",
+      "title": { "ru": "Сила строк" },
+      "min": 0, "max": 1, "default": 0.22
+    }
   ]
 }
 ```
@@ -105,6 +121,15 @@ A preset is a folder with `manifest.json` and, for levels 2 and 3,
 Parameter names must be plain identifiers, `min` must be below `max`, and the
 default must lie between them: the name becomes a shader macro and the range
 becomes a slider, so both are validated before anything is compiled.
+
+`description` is one sentence about what the preset does, shown under the
+preview and as the tooltip in the menu bar. `title` is the caption of a slider;
+without one it is assembled from the parameter name, so `grainStrength` reads as
+Grain Strength. Both accept either a plain string or an object of language code
+to text, and the app picks the language of the interface. A language it cannot
+find leaves the description out and the caption assembled from the name, rather
+than showing text in a language nobody asked for - which is why the bundled
+presets carry `en` and `ru` descriptions but only `ru` captions.
 
 `icon` is an SF Symbols name shown next to the preset in the menu bar. It is
 optional, and a name the system does not know falls back to a symbol for the
@@ -162,6 +187,10 @@ Level 1 presets carry a `gamma` section instead of a shader:
 }
 ```
 
-A manifest that does not parse, a shader that does not compile, or a level that
-is not supported shows up in the menu and in the settings window with the actual
-error text instead of being skipped silently.
+A manifest that does not parse or names a level that is not supported shows up
+in the menu and in the settings window with the actual error text instead of
+being skipped silently. A shader that does not compile is only found when
+something builds a pipeline from it, which the preview does as soon as the
+preset is selected: the compiler's message appears under the preview. For the
+bundled presets `make test` compiles them all, so a broken one never reaches a
+release.

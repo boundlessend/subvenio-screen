@@ -46,7 +46,8 @@ settings window previews on.
   and problems are reported quietly through the menu bar icon instead of a modal
   dialog. Animated presets respect the system "Reduce Motion" setting.
 - **Your own effects.** Presets are folders with a Metal shader, not a fixed
-  list. Drop one in and it shows up in the menu without restarting the app.
+  list. Drop one in and it shows up in the menu without restarting the app, and
+  editing the one that is running changes the screen as you save.
 - **Update check** against the GitHub releases page - weekly by default, or
   daily, monthly or never, and there is a Check now button. The app never
   downloads or installs anything by itself; it tells you a version is out and
@@ -113,15 +114,22 @@ to disk and nothing leaves the machine.
 
 ## Your own effects
 
-A preset is a folder with a `manifest.json` and a Metal fragment function. The
-settings window has an **Open shaders folder** button that takes you straight
-there; save a file and the menu updates itself, no restart. A broken preset
-shows the actual error instead of quietly disappearing. A preset can name its
-own menu bar icon, and gets one for its rendering level if it does not.
+A preset is a folder with a `manifest.json` and a Metal fragment function.
+**New preset from template** in settings writes a working one for you and shows
+it in Finder; **Open shaders folder** takes you to the rest. Save a file and the
+menu updates itself, no restart - and if you edit the preset that is currently
+on screen, the screen follows. A broken preset shows the actual error instead of
+quietly disappearing: a manifest that does not parse is named in the menu, and a
+shader that does not compile shows the compiler's message under the preview.
 
-The bundled presets are yours to edit. An edited one stays as you left it
-even when a new version of the app ships a different version of the same preset,
-and **Restore bundled presets** in settings puts them all back the way they came.
+A preset can name its own menu bar icon and describe itself in a line that
+shows up under the preview and as a tooltip in the menu, in English or in
+Russian.
+
+The bundled presets are yours to edit, and yours to delete. An edited one stays
+as you left it even when a new version of the app ships a different version of
+the same preset, a deleted one stays deleted, and **Restore bundled presets** in
+settings puts them all back the way they came.
 
 The format is described in [DEVELOPMENT.md](DEVELOPMENT.md#writing-a-shader).
 

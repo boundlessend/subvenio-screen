@@ -4,6 +4,69 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 each one ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
+## Unreleased
+
+### Added
+
+- **Every preset says what it does.** A line under the preview and a tooltip in
+  the menu bar, in English or Russian: "Halation" and "Aperture Grille" told
+  nobody anything on their own. The three presets that quantise the picture say
+  there that small text becomes hard to read, and Halation says it is the
+  expensive one. Slider captions are translated too, while preset names stay in
+  one language on purpose - they work like the names of film stocks.
+- **A first launch that explains itself.** The app used to open its settings
+  window and leave the rest unsaid: which icon in the menu bar is ours, that
+  clicking it turns the effect on, and that there is a hotkey. It says so once,
+  with the current shortcut in it.
+- **New preset from template**, a button that writes a working level 2 preset
+  into the shaders folder and shows it in Finder. "Open shaders folder" alone
+  assumed you keep the manifest format in your head.
+- A shader that does not compile shows the compiler's message under the
+  preview. It used to be a line in the log, so the preset looked healthy right
+  up until it was turned on.
+- Settings say when an animated preset is held still by the system "Reduce
+  Motion" setting, instead of letting it look broken.
+
+### Changed
+
+- **The preset that is running follows the file.** Editing a shader on disk
+  refreshed the list and the preview but left the screen on the old pipeline,
+  so the settings window showed one thing and the display another.
+- **A deleted bundled preset stays deleted.** It used to come back on the next
+  read of the folder, which made breaking its manifest the only way to be rid
+  of it. "Restore bundled presets" still brings them all back.
+- Presets are ordered by the name you see rather than by folder name, so
+  "Phosphor Terminal" no longer leads the list from inside a folder called
+  AmberTerminal.
+- On a fresh install the selected preset is a free one. It used to be whatever
+  sorted first, which asked for Screen Recording on the first press of the
+  hotkey.
+- Unplugging a display turns the effect off, as before, and plugging it back in
+  brings the effect back: it was not the person who turned it off.
+- Window-only mode survives a restart, like every other setting.
+- The permission panel names the preset asking for it, and the settings window
+  tells you a private repository is why there is nothing to check against.
+- Stepping through the preset list is no longer a fresh shader compilation per
+  step: the preview caches pipelines the way the overlay already did.
+- The hotkey line in the menu opens the tab where the hotkey is recorded,
+  failed presets get a heading of their own, "Reset to defaults" is now "Reset
+  the sliders" - which is all it ever did - and a slider value shows as many
+  decimals as its range deserves.
+- A second copy of the app quits at launch instead of adding a second menu bar
+  icon and a second gamma table over the same display.
+- VoiceOver reads the sliders by name and the menu bar icon by state.
+
+### Fixed
+
+- **Time stood still for every preset that reads the screen.** The clock was
+  started for a drawn layer and never for a captured one, so a level 3 shader
+  declaring itself animated stayed on frame zero - and then started moving on
+  its own after the screen slept. All bundled level 3 presets are still, which
+  is why nothing looked wrong.
+- The Russian text of the permission panel had drifted from the string in the
+  code by one invisible newline and was never shown. The string catalogue is
+  now checked against what the compiler actually extracts.
+
 ## 1.5.0
 
 ### Added

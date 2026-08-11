@@ -60,9 +60,11 @@ white" with an explicit warning in the UI, never as the foundation.
    permissive like MIT, with the extra clause that keeps the author's name out of
    endorsements for derived work. Without a license file at all, a public
    repository would be readable and nothing else.
-2. **Effect area.** Three tiers: one global hotkey for the whole display, extra
-   hotkeys configurable per display, and a separate mode where the effect only
-   covers the area of a chosen window.
+2. **Effect area.** One global hotkey for the whole display, plus a mode where
+   the effect only covers the area of a chosen window. A hotkey per display was
+   in this decision from the start and moved to Deferred instead of being built:
+   it only means anything once several displays can carry different effects at
+   once, which is deferred itself.
 3. **Effect catalogue.** Not a fixed list of presets but an engine with support
    for user shaders as plugins. The ready-made filters are the first presets on
    top of the engine, not hardcoded features.
@@ -89,6 +91,16 @@ white" with an explicit warning in the UI, never as the foundation.
     in the same order. The headings name the cost rather than the mechanism -
     "Reads the screen", not "ScreenCaptureKit" - because the cost is what the
     choice turns on.
+21. **A preset describes itself, and its texts are localised while its name is
+    not.** A name is all a preset used to say, and "Halation" or "Aperture
+    Grille" says nothing about what picking it does; the manifest now carries a
+    `description` shown under the preview and as the menu tooltip, and each
+    parameter an optional `title` for its slider. Both take either a plain
+    string or an object of language code to text. Names stay in one language
+    deliberately: they work like the names of film stocks or filters, and
+    "Зерно плёнки" beside VHS and Game Boy would read as a half-translated
+    list. A missing language yields no description and a caption assembled from
+    the parameter name rather than text in a language nobody asked for.
 16. **The preview runs on a bundled picture, not on the screen.** Reading the
     real screen for a thumbnail would demand the Screen Recording permission in
     the one window that is supposed to explain the permissions, and would demand
@@ -121,7 +133,10 @@ white" with an explicit warning in the UI, never as the foundation.
     match means nobody edited it and it can be replaced; a mismatch means the
     user's work is in there and it is left alone. A version field in the manifest
     would need every preset author to maintain it honestly, and would still not
-    tell edited copies from untouched ones.
+    tell edited copies from untouched ones. A recorded fingerprint with no folder
+    behind it means the preset was deleted on purpose, so it is not put back:
+    otherwise a preset nobody wants returns on every launch, and the only way to
+    be rid of it is to break it.
 6. **Cursor and system elements.** A configurable option per preset. At level 3
    a cursor drawn inside the frame lags by the whole capture-shader-output
    delay, and that reads as a laggy mouse, so the default is the system cursor
@@ -217,6 +232,18 @@ validation and the uniform buffer layout. Everything else here is rendering, and
 rendering is checked against the system rather than against a mock - the tools
 for that are listed in [DEVELOPMENT.md](DEVELOPMENT.md#layout).
 
+Two exceptions earn their place. Installing the bundled presets is the only code
+that writes into a folder somebody else owns, and a mistake there wipes work
+silently, so its five cases are covered against a temporary defaults domain and
+a directory standing in for the bundle. And every bundled shader is compiled
+through the real prelude, because a shader is otherwise only compiled when
+someone turns the preset on - which is too late to find out in a release. The
+same test insists each preset has a description in the current language.
+
+SwiftLint runs in CI with `--strict`. Its default rules were already silent on
+this code, so nothing was reshaped to satisfy it; the handful of rules turned
+off in `.swiftlint.yml` carry their reason next to them.
+
 A shader is worth rendering offline into a texture before trusting it on screen.
 That is how the noise bug was caught: the hash mixed elapsed time into its
 argument, `sin` ran out of precision, and grain vanished four minutes in. On
@@ -241,7 +268,7 @@ of the menu it lands in.
 
 Free, and covering the cursor and the menu bar: Invert, Sepia, Faded Photo,
 Moonlight. One drawn layer and no permission: Scanlines, Film Grain, VHS,
-Dust & Scratches, Projector. Reading the screen: Black and White, Amber
+Dust & Scratches, Projector. Reading the screen: Black and White, Phosphor
 Terminal, Aperture Grille, Halation, Chromatic Aberration, Halftone, 1-bit
 Dither, Game Boy.
 
@@ -284,7 +311,9 @@ Questions consciously postponed. Not forgotten, just not needed yet.
    at once means a window, a `CaptureController` and a display link per screen,
    which is also where displays with different scale and refresh rate stop being
    free: `CADisplayLink` already follows the screen its view is on, but each
-   render target would need its own.
+   render target would need its own. **A hotkey per display** belongs here: with
+   one effect at a time, a second hotkey would only move that effect to another
+   screen, which the settings window already does.
 2. **Capturing only the window in window-scoped mode.** Level 3 captures the
    whole display and crops in the shader. `SCStreamConfiguration.sourceRect` plus
    `updateConfiguration` would capture just the window instead, at the cost of
