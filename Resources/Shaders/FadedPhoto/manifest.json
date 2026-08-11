@@ -1,5 +1,9 @@
 {
   "name": "Faded Photo",
+  "description": {
+    "en": "Washed out and warm, a photo left in the sun.",
+    "ru": "Выцветший тёплый кадр, фотография, полежавшая на солнце."
+  },
   "level": 1,
   "icon": "photo",
   "gamma": {

@@ -1,23 +1,36 @@
 {
   "name": "VHS",
+  "description": {
+    "en": "A purple tint, line noise and a band drifting up the screen.",
+    "ru": "Фиолетовый оттенок, шум строк и полоса, ползущая по экрану."
+  },
   "level": 2,
   "icon": "tv",
   "animated": true,
   "parameters": [
     {
       "name": "tintStrength",
+      "title": {
+        "ru": "Оттенок"
+      },
       "min": 0,
       "max": 1,
       "default": 0.16
     },
     {
       "name": "bandStrength",
+      "title": {
+        "ru": "Полоса"
+      },
       "min": 0,
       "max": 1,
       "default": 0.3
     },
     {
       "name": "noiseStrength",
+      "title": {
+        "ru": "Шум"
+      },
       "min": 0,
       "max": 1,
       "default": 0.12

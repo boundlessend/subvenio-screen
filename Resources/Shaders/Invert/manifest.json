@@ -1,5 +1,9 @@
 {
   "name": "Invert",
+  "description": {
+    "en": "Inverts the picture, the cursor and the menu bar with it.",
+    "ru": "Инвертирует картинку вместе с курсором и меню-баром."
+  },
   "level": 1,
   "icon": "circle.righthalf.filled",
   "gamma": {

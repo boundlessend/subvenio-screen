@@ -19,8 +19,43 @@ enum RenderLevel: Int, Decodable, CaseIterable {
     }
 }
 
+/// текст пресета, который читает человек: либо одна строка, либо строка на язык.
+/// {"en": ..., "ru": ...} выбирается по языку интерфейса, простая строка остаётся
+/// как есть - чужому пресету незачем знать про наши локали
+enum LocalizedText: Decodable, Equatable {
+    case plain(String)
+    case byLanguage([String: String])
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let text = try? container.decode(String.self) {
+            self = .plain(text)
+            return
+        }
+        self = .byLanguage(try container.decode([String: String].self))
+    }
+
+    /// nil означает, что на языке интерфейса текста нет: подставлять чужой язык хуже,
+    /// чем обойтись без строки или собрать её из имени параметра
+    var resolved: String? {
+        switch self {
+        case let .plain(text):
+            return text
+        case let .byLanguage(texts):
+            for code in Bundle.main.preferredLocalizations {
+                if let text = texts[code] {
+                    return text
+                }
+            }
+            return texts["en"]
+        }
+    }
+}
+
 struct ShaderParameter: Decodable, Equatable {
     let name: String
+    /// подпись ползунка. без неё окно соберёт её из имени: grainStrength -> Grain Strength
+    let title: LocalizedText?
     let min: Float
     let max: Float
     let `default`: Float
@@ -38,6 +73,9 @@ struct GammaSettings: Decodable, Equatable {
 
 struct ShaderManifest: Decodable, Equatable {
     let name: String
+    /// одна фраза о том, что пресет делает: имя вроде "Halation" не говорит ничего.
+    /// показывается под превью и подсказкой в меню
+    let description: LocalizedText?
     let level: RenderLevel
     let animated: Bool?
     /// имя символа SF Symbols для меню. пресет описывает себя сам, как и своим именем;

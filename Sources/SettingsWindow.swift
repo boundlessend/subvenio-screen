@@ -122,6 +122,12 @@ struct EffectSettings: View {
             ))
 
             if let plugin = effects.selectedPlugin {
+                // сначала что пресет делает, потом чего он стоит: имя вроде
+                // "Aperture Grille" не отвечает ни на один из этих вопросов
+                if let description = plugin.manifest.description?.resolved {
+                    Text(description)
+                        .font(.callout)
+                }
                 Text(levelDescription(plugin.manifest.level))
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -204,8 +210,9 @@ struct EffectSettings: View {
             let values = effects.parameters(for: plugin)
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(parameters.enumerated()), id: \.offset) { index, parameter in
+                    let title = parameter.title?.resolved ?? parameterTitle(parameter.name)
                     HStack(spacing: 10) {
-                        Text(parameterTitle(parameter.name))
+                        Text(title)
                             .frame(width: 118, alignment: .leading)
                             .lineLimit(1)
                         Slider(
@@ -215,14 +222,27 @@ struct EffectSettings: View {
                             ),
                             in: Double(parameter.min)...Double(parameter.max)
                         )
+                        // подпись рядом это отдельная вьюха, и VoiceOver её со ползунком
+                        // не связывает: без этого он читает голое число
+                        .accessibilityLabel(title)
                         // формат числа берёт разделитель из локали, а не из POSIX
-                        Text(values[index].formatted(.number.precision(.fractionLength(2))))
-                            .monospacedDigit()
-                            .frame(width: 44, alignment: .trailing)
+                        Text(values[index].formatted(
+                            .number.precision(.fractionLength(fractionLength(of: parameter)))
+                        ))
+                        .monospacedDigit()
+                        .frame(width: 44, alignment: .trailing)
                     }
                 }
             }
         }
+    }
+
+    /// знаков после запятой столько, сколько несёт диапазон: размер ячейки от 2 до 16
+    /// показывать как «6,00» незачем, а оттенок от 0 до 1 без сотых не настроить
+    private func fractionLength(of parameter: ShaderParameter) -> Int {
+        let span = parameter.max - parameter.min
+        if span >= 10 { return 0 }
+        return span >= 2 ? 1 : 2
     }
 
     /// имя параметра в манифесте это идентификатор для шейдера, и в окне оно читается

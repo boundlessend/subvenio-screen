@@ -1,11 +1,18 @@
 {
   "name": "1-bit Dither",
+  "description": {
+    "en": "Two shades and an ordered pattern between them. Small text becomes hard to read.",
+    "ru": "Два тона и упорядоченный дизеринг между ними. Мелкий текст читается плохо."
+  },
   "level": 3,
   "icon": "checkerboard.rectangle",
   "animated": false,
   "parameters": [
     {
       "name": "contrast",
+      "title": {
+        "ru": "Контраст"
+      },
       "min": 0.5,
       "max": 2,
       "default": 1.15

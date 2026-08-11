@@ -1,17 +1,27 @@
 {
   "name": "Film Grain",
+  "description": {
+    "en": "Grain redrawn 24 times a second, the texture of film stock.",
+    "ru": "Зерно пересыпается 24 раза в секунду, фактура плёнки."
+  },
   "level": 2,
   "icon": "film",
   "animated": true,
   "parameters": [
     {
       "name": "grainStrength",
+      "title": {
+        "ru": "Сила зерна"
+      },
       "min": 0,
       "max": 1,
       "default": 0.18
     },
     {
       "name": "vignetteStrength",
+      "title": {
+        "ru": "Виньетка"
+      },
       "min": 0,
       "max": 1,
       "default": 0.45

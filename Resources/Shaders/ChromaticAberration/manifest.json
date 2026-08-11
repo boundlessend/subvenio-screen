@@ -1,17 +1,27 @@
 {
   "name": "Chromatic Aberration",
+  "description": {
+    "en": "The channels diverge towards the edges, as through cheap glass.",
+    "ru": "Каналы расходятся к краям, как в дешёвой оптике."
+  },
   "level": 3,
   "icon": "camera.aperture",
   "animated": false,
   "parameters": [
     {
       "name": "amount",
+      "title": {
+        "ru": "Величина"
+      },
       "min": 0,
       "max": 0.05,
       "default": 0.016
     },
     {
       "name": "edgeBias",
+      "title": {
+        "ru": "Смещение к краям"
+      },
       "min": 0,
       "max": 1,
       "default": 1.0

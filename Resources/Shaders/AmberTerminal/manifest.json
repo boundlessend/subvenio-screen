@@ -1,23 +1,36 @@
 {
   "name": "Phosphor Terminal",
+  "description": {
+    "en": "Luminance poured into a single phosphor. Amber by default, P1 green at a hue of 0.36.",
+    "ru": "Яркость, перелитая в один люминофор. Янтарь по умолчанию, зелёный P1 при оттенке 0,36."
+  },
   "level": 3,
   "icon": "terminal",
   "animated": false,
   "parameters": [
     {
       "name": "hue",
+      "title": {
+        "ru": "Оттенок"
+      },
       "min": 0,
       "max": 1,
       "default": 0.09
     },
     {
       "name": "glow",
+      "title": {
+        "ru": "Свечение"
+      },
       "min": 0,
       "max": 1,
       "default": 0.35
     },
     {
       "name": "lineStrength",
+      "title": {
+        "ru": "Сила строк"
+      },
       "min": 0,
       "max": 1,
       "default": 0.18

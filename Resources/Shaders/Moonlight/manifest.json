@@ -1,5 +1,9 @@
 {
   "name": "Moonlight",
+  "description": {
+    "en": "Blue and dimmed, the day-for-night trick from film.",
+    "ru": "Синий полумрак, киношный приём «американская ночь»."
+  },
   "level": 1,
   "icon": "moon.stars",
   "gamma": {

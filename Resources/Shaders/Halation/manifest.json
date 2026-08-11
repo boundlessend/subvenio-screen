@@ -1,17 +1,27 @@
 {
   "name": "Halation",
+  "description": {
+    "en": "Light spreads past the edge of whatever emits it. The most expensive preset here: twelve samples per pixel, so a half-size capture buffer helps.",
+    "ru": "Свет растекается за границу источника. Самый дорогой пресет: двенадцать выборок на пиксель, поэтому половинный буфер захвата заметно помогает."
+  },
   "level": 3,
   "icon": "rays",
   "animated": false,
   "parameters": [
     {
       "name": "threshold",
+      "title": {
+        "ru": "Порог"
+      },
       "min": 0,
       "max": 1,
       "default": 0.62
     },
     {
       "name": "strength",
+      "title": {
+        "ru": "Сила"
+      },
       "min": 0,
       "max": 2,
       "default": 0.85

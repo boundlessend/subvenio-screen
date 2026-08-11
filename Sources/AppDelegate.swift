@@ -240,6 +240,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 item.representedObject = plugin.identifier
                 item.state = plugin.identifier == active ? .on : .off
                 item.image = pluginIcon(plugin)
+                // имя пресета говорит не всё: "Halation" без подсказки это загадка
+                item.toolTip = plugin.manifest.description?.resolved
                 menu.addItem(item)
             }
         }

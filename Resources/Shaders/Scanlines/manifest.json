@@ -1,23 +1,36 @@
 {
   "name": "Scanlines",
+  "description": {
+    "en": "The lines of a CRT over the screen, with the corners in shadow.",
+    "ru": "Строки кинескопа поверх экрана, углы уходят в тень."
+  },
   "level": 2,
   "icon": "line.3.horizontal",
   "animated": false,
   "parameters": [
     {
       "name": "scanlinePeriod",
+      "title": {
+        "ru": "Шаг строк"
+      },
       "min": 2,
       "max": 8,
       "default": 3
     },
     {
       "name": "scanlineStrength",
+      "title": {
+        "ru": "Сила строк"
+      },
       "min": 0,
       "max": 1,
       "default": 0.22
     },
     {
       "name": "vignetteStrength",
+      "title": {
+        "ru": "Виньетка"
+      },
       "min": 0,
       "max": 1,
       "default": 0.55

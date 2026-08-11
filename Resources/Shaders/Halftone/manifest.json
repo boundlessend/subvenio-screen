@@ -1,17 +1,27 @@
 {
   "name": "Halftone",
+  "description": {
+    "en": "Newspaper printing, the grid turned 45 degrees. Small text becomes hard to read.",
+    "ru": "Газетный растр, решётка повёрнута на 45 градусов. Мелкий текст читается плохо."
+  },
   "level": 3,
   "icon": "circle.grid.3x3.fill",
   "animated": false,
   "parameters": [
     {
       "name": "cellSize",
+      "title": {
+        "ru": "Размер ячейки"
+      },
       "min": 2,
       "max": 16,
       "default": 6
     },
     {
       "name": "contrast",
+      "title": {
+        "ru": "Контраст"
+      },
       "min": 0.5,
       "max": 2,
       "default": 1.2

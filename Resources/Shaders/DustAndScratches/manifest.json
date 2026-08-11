@@ -1,17 +1,27 @@
 {
   "name": "Dust & Scratches",
+  "description": {
+    "en": "Film wear: scratches and specks, each living exactly one frame.",
+    "ru": "Износ плёнки: царапины и соринки, каждая живёт ровно один кадр."
+  },
   "level": 2,
   "icon": "sparkles",
   "animated": true,
   "parameters": [
     {
       "name": "scratchStrength",
+      "title": {
+        "ru": "Царапины"
+      },
       "min": 0,
       "max": 1,
       "default": 0.55
     },
     {
       "name": "dustStrength",
+      "title": {
+        "ru": "Соринки"
+      },
       "min": 0,
       "max": 1,
       "default": 0.7

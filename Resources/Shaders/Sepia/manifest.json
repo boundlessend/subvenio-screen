@@ -1,5 +1,9 @@
 {
   "name": "Sepia",
+  "description": {
+    "en": "A warm tint over lifted blacks, the colour of an old print.",
+    "ru": "Тёплый тон и приподнятый чёрный, цвет старого отпечатка."
+  },
   "level": 1,
   "icon": "drop",
   "gamma": {
