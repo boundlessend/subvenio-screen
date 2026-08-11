@@ -58,8 +58,15 @@ private func previewSignature(_ plugin: ShaderPlugin) -> String {
 final class PreviewView: NSView {
     /// один рендерер на все превью: девайс и очередь команд не зависят от пресета
     private static let renderer = try? OverlayRenderer()
+    /// один кеш на все превью: без него возврат к уже виденному пресету компилирует
+    /// его шейдер заново, а это сотни миллисекунд на главном потоке за каждый шаг
+    private static let pipelines = PipelineCache()
     /// превью маленькое, поэтому половина частоты дисплея незаметна, а стоит вдвое дешевле
     private static let framesPerSecond: Float = 30
+
+    /// шейдер не скомпилировался: превью показывает чистый образец, и без этого
+    /// человек узнавал бы о поломке только при попытке включить эффект
+    var onFailure: ((String?) -> Void)?
 
     private let metalLayer = CAMetalLayer()
     private let sample = previewSample()
@@ -134,6 +141,7 @@ final class PreviewView: NSView {
             pipeline = nil
             metalLayer.isHidden = true
             layer?.contents = gammaPreviewImage(settings, source: sample) ?? sample
+            onFailure?(nil)
         case .overlay, .capture:
             layer?.contents = sample
             pipeline = makePreviewPipeline(for: plugin)
@@ -142,13 +150,16 @@ final class PreviewView: NSView {
     }
 
     /// битый пользовательский шейдер не должен ронять окно настроек: превью остаётся
-    /// чистым образцом, а текст ошибки человек увидит при попытке включить эффект
+    /// чистым образцом, а ошибка компиляции уходит наверх и показывается рядом с ним
     private func makePreviewPipeline(for plugin: ShaderPlugin) -> MTLRenderPipelineState? {
         guard let device = Self.renderer?.device else { return nil }
         do {
-            return try makePipeline(device: device, plugin: plugin)
+            let pipeline = try Self.pipelines.pipeline(for: plugin, device: device)
+            onFailure?(nil)
+            return pipeline
         } catch {
             Log.overlay.error("preview pipeline failed: \(error.localizedDescription)")
+            onFailure?(error.localizedDescription)
             return nil
         }
     }
@@ -247,14 +258,27 @@ final class PreviewView: NSView {
 struct EffectPreview: NSViewRepresentable {
     let plugin: ShaderPlugin
     let parameters: [Float]
+    /// ошибка компиляции шейдера, чтобы окно показало её рядом с превью
+    @Binding var failure: String?
 
     func makeNSView(context: Context) -> PreviewView {
         let view = PreviewView(frame: .zero)
+        view.onFailure = report
         view.show(plugin: plugin, parameters: parameters)
         return view
     }
 
     func updateNSView(_ view: PreviewView, context: Context) {
+        view.onFailure = report
         view.show(plugin: plugin, parameters: parameters)
+    }
+
+    /// пересборка превью идёт внутри обновления вью, а состояние там менять нельзя:
+    /// SwiftUI ответил бы на это предупреждением и лишним кругом отрисовки
+    private func report(_ message: String?) {
+        DispatchQueue.main.async {
+            guard failure != message else { return }
+            failure = message
+        }
     }
 }

@@ -59,6 +59,9 @@ struct SettingsRoot: View {
 struct EffectSettings: View {
     @ObservedObject var effects: EffectController
     @State private var isConfirmingRestore = false
+    /// шейдер выбранного пресета не компилируется: превью знает об этом первым,
+    /// потому что собирает пайплайн раньше, чем эффект успевают включить
+    @State private var shaderFailure: String?
 
     var body: some View {
         Form {
@@ -128,12 +131,28 @@ struct EffectSettings: View {
                 HStack(alignment: .center, spacing: 20) {
                     parameterControls(for: plugin)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    EffectPreview(plugin: plugin, parameters: effects.parameters(for: plugin))
-                        .frame(width: 240, height: 138)
-                        .id(plugin.identifier)
-                        // смена пресета как смена кадра плёнки: по теме и заодно скрывает
-                        // паузу на компиляцию нового шейдера
-                        .transition(.movingParts.filmExposure)
+                    EffectPreview(
+                        plugin: plugin,
+                        parameters: effects.parameters(for: plugin),
+                        failure: $shaderFailure
+                    )
+                    .frame(width: 240, height: 138)
+                    .id(plugin.identifier)
+                    // смена пресета как смена кадра плёнки: по теме и заодно скрывает
+                    // паузу на компиляцию нового шейдера
+                    .transition(.movingParts.filmExposure)
+                }
+
+                // ошибка компиляции всплывала бы только при попытке включить эффект,
+                // а превью собирает тот же шейдер сразу и молчать об этом не должно
+                if let shaderFailure {
+                    Text(String(
+                        format: String(localized: "This preset does not compile: %@"),
+                        shaderFailure
+                    ))
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .textSelection(.enabled)
                 }
             } else {
                 Text("The selected preset is no longer in the shaders folder. Pick another one.")

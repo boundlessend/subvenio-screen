@@ -105,16 +105,9 @@ final class OverlayWindow: NSWindow {
 /// живёт на главном акторе: трогает окно, вью и display link
 @MainActor
 final class OverlayController {
-    /// ключ включает исходник: правка shader.metal на диске должна давать новый пайплайн,
-    /// иначе изменения не видно до перезапуска приложения
-    private struct PipelineKey: Hashable {
-        let identifier: String
-        let source: String
-    }
-
     private var cachedRenderer: OverlayRenderer?
     private var window: OverlayWindow?
-    private var pipelines: [PipelineKey: MTLRenderPipelineState] = [:]
+    private let pipelines = PipelineCache()
     private var displayLink: CADisplayLink?
     private var currentPlugin: ShaderPlugin?
     private var currentDisplayID: CGDirectDisplayID = CGMainDisplayID()
@@ -245,7 +238,7 @@ final class OverlayController {
 
     /// пресеты пропали с диска: их скомпилированные пайплайны больше не нужны
     func forgetPipelines(keeping identifiers: Set<String>) {
-        pipelines = pipelines.filter { identifiers.contains($0.key.identifier) }
+        pipelines.forget(keeping: identifiers)
     }
 
     /// главный поток: поднимает окно под эффект и собирает поток захвата, но не стартует его
@@ -336,7 +329,7 @@ final class OverlayController {
         frame: CGRect
     ) throws -> OverlayView {
         let renderer = try renderer()
-        let pipeline = try cachedPipeline(for: plugin)
+        let pipeline = try pipelines.pipeline(for: plugin, device: renderer.device)
         currentPlugin = plugin
         currentDisplayID = displayID
 
@@ -362,26 +355,6 @@ final class OverlayController {
             "overlay shown: \(plugin.identifier, privacy: .public) at \(String(describing: frame), privacy: .public), screen \(String(describing: target.frame), privacy: .public)"
         )
         return view
-    }
-
-    private func cachedPipeline(for plugin: ShaderPlugin) throws -> MTLRenderPipelineState {
-        let source: String
-        switch plugin.kind {
-        case let .overlay(text), let .capture(text):
-            source = text
-        case .gamma:
-            throw PluginError.unsupportedLevel(plugin: plugin.manifest.name, level: .gammaLUT)
-        }
-
-        let key = PipelineKey(identifier: plugin.identifier, source: source)
-        if let cached = pipelines[key] {
-            return cached
-        }
-        let pipeline = try makePipeline(device: try renderer().device, plugin: plugin)
-        // прежняя редакция того же плагина больше не нужна
-        pipelines = pipelines.filter { $0.key.identifier != plugin.identifier }
-        pipelines[key] = pipeline
-        return pipeline
     }
 
     // MARK: - тики анимации

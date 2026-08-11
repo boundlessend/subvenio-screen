@@ -135,6 +135,47 @@ func makePipeline(device: MTLDevice, plugin: ShaderPlugin) throws -> MTLRenderPi
     }
 }
 
+/// скомпилированные пайплайны переживают переключение пресета: компиляция стоит
+/// сотни миллисекунд, и без кеша перебор списка в настройках платит их на каждом шаге.
+/// ключ включает исходник, поэтому правка shader.metal на диске даёт новый пайплайн,
+/// а не поднимает прежний из кеша.
+///
+/// живёт на главном потоке у оверлея и у превью, но изоляцией это не выражено:
+/// превью держит его статическим полем NSView, а тот при targeted-режиме не изолирован
+final class PipelineCache {
+    private struct Key: Hashable {
+        let identifier: String
+        let source: String
+    }
+
+    private var pipelines: [Key: MTLRenderPipelineState] = [:]
+
+    func pipeline(for plugin: ShaderPlugin, device: MTLDevice) throws -> MTLRenderPipelineState {
+        let source: String
+        switch plugin.kind {
+        case let .overlay(text), let .capture(text):
+            source = text
+        case .gamma:
+            throw PluginError.unsupportedLevel(plugin: plugin.manifest.name, level: .gammaLUT)
+        }
+
+        let key = Key(identifier: plugin.identifier, source: source)
+        if let cached = pipelines[key] {
+            return cached
+        }
+        let pipeline = try makePipeline(device: device, plugin: plugin)
+        // прежняя редакция того же пресета больше не нужна
+        pipelines = pipelines.filter { $0.key.identifier != plugin.identifier }
+        pipelines[key] = pipeline
+        return pipeline
+    }
+
+    /// пресеты пропали с диска: их пайплайны больше не нужны
+    func forget(keeping identifiers: Set<String>) {
+        pipelines = pipelines.filter { identifiers.contains($0.key.identifier) }
+    }
+}
+
 /// сверяет размер uniform-буфера, который ждёт шейдер, с тем, что шлёт Swift.
 /// ошибка здесь означает расхождение пролога и `struct Uniforms`, а не вину плагина
 private func checkUniformLayout(_ reflection: MTLRenderPipelineReflection?) throws {
