@@ -91,7 +91,7 @@ still a manual step: a new version means a new disk image from Releases.
 | Film Grain | flickering grain with a vignette | one drawn layer |
 | VHS | purple tint, line noise and a drifting band | one drawn layer |
 | Dust & Scratches | film wear: scratches and specks, each one frame long | one drawn layer |
-| Projector | the lamp breathing, the corners in shadow | one drawn layer |
+| Projector | even lamp light, the corners in shadow | one drawn layer |
 | Black and White | true desaturation, not a tint | reads the screen |
 | Phosphor Terminal | luminance poured into one phosphor, amber or green | reads the screen |
 | Aperture Grille | every third column to its own phosphor | reads the screen |

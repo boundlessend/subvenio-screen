@@ -277,16 +277,19 @@ text hard to read. They are effects to look at rather than to work under, and
 the README says so rather than the menu: a preset that warns about itself every
 time it is opened is a preset nobody picks twice.
 
-**An animated preset must not change the whole screen quickly.** Projector
-shipped wobbling its lamp at 1.75 and 4.3 Hz, which reads as flicker rather
-than as a lamp: those are the frequencies the eye is most sensitive to, and
-the band that is unsafe for photosensitive people - the same reason interlaced
-fields were rejected below. Full-screen brightness belongs in fractions of a
-hertz; anything faster has to be local, the way grain, line noise and scratches
-are. It is measurable: render the shader offline over ten seconds and look at
-how far the average alpha moves between two frames at 60 Hz. Projector moved by
-0.07 and now moves by 0.012, while the other animated presets sit under 0.02
-and never move the whole frame at once.
+**An animated preset must not modulate the brightness of the whole screen at
+all.** Fast, that reads as flicker - the band the eye notices most, and the band
+that is unsafe for photosensitive people, the same reason interlaced fields were
+rejected below. Slow, it reads as breathing, which is no easier to sit in front
+of for an hour and no easier to ignore. Slowing such an effect down does not fix
+it, because the depth survives the change: Projector's lamp darkened the whole
+frame by a quarter at 1.75 Hz, and by exactly the same quarter after the
+frequencies dropped to 0.37 Hz. Its lamp is steady now and the preset is a
+static vignette. Whatever moves has to move locally, the way grain, line noise
+and scratches do. Both halves are measurable: render the shader offline over ten
+seconds, and look at how far the average alpha moves between two frames at 60 Hz
+and at how far it travels across the whole run. The animated presets step under
+0.02 per frame and never move the whole frame at once.
 
 **A level 2 layer cannot dim one channel.** The overlay composites through a
 single alpha, so a coloured mask that leaves one channel alone and darkens the
