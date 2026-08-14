@@ -6,7 +6,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-VERSION=$(awk -F'"' '/MARKETING_VERSION/ {print $2}' project.yml)
+VERSION=$(awk -F'"' '/^ *MARKETING_VERSION:/ {print $2}' project.yml)
 if [ -z "$VERSION" ]; then
     echo "MARKETING_VERSION не найден в project.yml" >&2
     exit 1

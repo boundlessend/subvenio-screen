@@ -48,7 +48,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.senya.SubvenioScreen
         PRODUCT_NAME: "Subvenio Screen"
         MARKETING_VERSION: "1.6.0"
-        CURRENT_PROJECT_VERSION: 1
+        # номер сборки идёт за версией, а не стоит на единице: иначе две разные
+        # сборки одной версии неотличимы, а поднимать его отдельно значит помнить
+        # о втором числе на каждом релизе
+        CURRENT_PROJECT_VERSION: "$(MARKETING_VERSION)"
         SWIFT_VERSION: "5.0"
         # ловит гонки на границах, где уже расставлены акторы и Sendable,
         # не заваливая сборку шумом от AppKit
@@ -60,7 +63,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 boundlessend"
-        ARCHS: "$(ARCHS_STANDARD)"
+        # категория для Launch Services и Finder: строка стоит ровно ничего,
+        # а без неё приложение не относится ни к чему
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.utilities"
+        # архитектура названа явно, а не унаследована от машины сборки: Apple Silicon
+        # это решение из PLAN.md, и оно должно читаться в проекте, а не в железе
+        ARCHS: arm64
 
   SubvenioScreenTests:
     type: bundle.unit-test
