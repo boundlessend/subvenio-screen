@@ -86,6 +86,8 @@ final class PreviewView: NSView {
         metalLayer.pixelFormat = .bgra8Unorm
         metalLayer.framebufferOnly = true
         metalLayer.isOpaque = false
+        // то же пространство, что у оверлея: превью обещает показать, что получит экран
+        metalLayer.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         metalLayer.isHidden = true
 
         layer?.cornerRadius = 6

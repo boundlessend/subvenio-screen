@@ -40,6 +40,10 @@ final class OverlayView: NSView {
         layer.pixelFormat = .bgra8Unorm
         layer.framebufferOnly = true
         layer.isOpaque = false
+        // пространство задаётся явно, иначе числа шейдера читаются как координаты
+        // дисплея: на Display P3 тот же тинт выходил насыщеннее задуманного,
+        // и превью с экраном расходились по цвету. пресеты писались в sRGB
+        layer.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
         return layer
     }
 

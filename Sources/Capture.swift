@@ -209,6 +209,10 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
         configuration.width = Int(CGFloat(display.width) * pixelScale)
         configuration.height = Int(CGFloat(display.height) * pixelScale)
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
+        // кадр приходит в том же пространстве, в котором оверлей его потом покажет:
+        // иначе на Display P3 шейдер получал одни числа, а рисовал по другим,
+        // и «честное чёрно-белое» зависело от того, к какому монитору подключились
+        configuration.colorSpaceName = CGColorSpace.sRGB
         // по умолчанию курсор рисует система поверх эффекта: попав внутрь кадра, он отстаёт
         // на всю задержку пайплайна и читается как лаг мыши
         configuration.showsCursor = showsCursor
