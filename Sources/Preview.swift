@@ -95,6 +95,14 @@ final class PreviewView: NSView {
         layer?.backgroundColor = NSColor.black.cgColor
         layer?.addSublayer(metalLayer)
 
+        // превью говорит голосом самого эффекта, поэтому подписывается на то же самое:
+        // без этого текст «пресет стоит неподвижно» появлялся рядом с живой картинкой
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(animationConditionsDidChange),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil
+        )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(occlusionDidChange),
@@ -109,7 +117,7 @@ final class PreviewView: NSView {
         ] {
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(activationDidChange),
+                selector: #selector(animationConditionsDidChange),
                 name: name,
                 object: nil
             )
@@ -250,7 +258,7 @@ final class PreviewView: NSView {
         setAnimating(plugin?.isAnimated ?? false)
     }
 
-    @objc private func activationDidChange() {
+    @objc private func animationConditionsDidChange() {
         setAnimating(plugin?.isAnimated ?? false)
     }
 }
