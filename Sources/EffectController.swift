@@ -1,11 +1,18 @@
 import AppKit
 import Combine
 
+/// что предложить человеку кроме «понятно»: путь к папке в тексте ошибки читается
+/// как часть поломки, а кнопка ведёт туда, где её можно исправить
+enum EffectRecovery {
+    case openShadersFolder
+}
+
 /// проблема, о которой надо сказать пользователю. фоновое приложение без окна не имеет
 /// права перекрывать чужую работу модальным диалогом, поэтому статус живёт в меню-баре
 struct EffectStatus {
     let title: String
     let message: String
+    let recovery: EffectRecovery?
 }
 
 /// состояние эффекта: какой пресет выбран, включён ли он и с какими параметрами.
@@ -44,6 +51,12 @@ final class EffectController: ObservableObject {
             guard selectedDisplayID != oldValue else { return }
             UserDefaults.standard.set(Int(selectedDisplayID), forKey: Self.selectedDisplayKey)
             if isEnabled {
+                enable()
+            } else if waitingForDisplay, screen(for: selectedDisplayID) != nil {
+                // эффект сняли вместе с пропавшим монитором, и человек выбрал другой:
+                // это и есть просьба вернуть его, ждать ещё одного события о дисплеях незачем
+                waitingForDisplay = false
+                clearStatus()
                 enable()
             }
         }
@@ -253,7 +266,10 @@ final class EffectController: ObservableObject {
     }
 
     func toggle() {
-        if isEnabled {
+        // нажатие во время асинхронного старта уровня 3 отменяет его, а не пропадает:
+        // человек, нажавший второй раз, передумал или решил, что не сработало,
+        // и молчание в ответ - худший из возможных ответов
+        if isEnabled || isStarting {
             // выключил человек, а не пропавший монитор: ждать возвращения нечего
             waitingForDisplay = false
             disable()
@@ -377,25 +393,33 @@ final class EffectController: ObservableObject {
     /// пустая папка и исчезнувший пресет это разные беды: во втором случае
     /// шейдеры на месте, просто выбранного среди них больше нет
     private func reportMissingPlugin() {
+        // обе беды чинятся в одной и той же папке, поэтому обе ведут туда кнопкой,
+        // а не показывают путь строкой посреди текста ошибки
         guard let identifier = selectedIdentifier, !plugins.isEmpty else {
-            report(
+            setStatus(
                 title: String(localized: "No shaders found"),
-                message: shadersDirectory().path
+                message: String(localized: "The shaders folder holds no presets. Restore the bundled ones in settings, or put a preset in yourself."),
+                recovery: .openShadersFolder
             )
             return
         }
-        report(
+        setStatus(
             title: String(localized: "Preset unavailable"),
             message: String(
                 format: String(localized: "\"%@\" is no longer in the shaders folder. Pick another preset."),
                 identifier
-            )
+            ),
+            recovery: .openShadersFolder
         )
     }
 
     private func report(title: String, message: String) {
+        setStatus(title: title, message: message, recovery: nil)
+    }
+
+    private func setStatus(title: String, message: String, recovery: EffectRecovery?) {
         Log.effects.error("\(title, privacy: .public): \(message, privacy: .public)")
-        status = EffectStatus(title: title, message: message)
+        status = EffectStatus(title: title, message: message, recovery: recovery)
     }
 
     @objc private func screensDidChange() {

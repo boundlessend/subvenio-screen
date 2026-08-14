@@ -220,7 +220,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showStatusDetails() {
         guard let status = effects.status else { return }
-        showAlert(title: status.title, message: status.message)
+        // «понятно» это всё, что можно ответить на текст с путём внутри. если беда
+        // чинится в папке пресетов, туда ведёт кнопка
+        switch status.recovery {
+        case .none:
+            showAlert(title: status.title, message: status.message)
+        case .openShadersFolder:
+            activateApp()
+            let alert = NSAlert()
+            alert.messageText = status.title
+            alert.informativeText = status.message
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: String(localized: "Open shaders folder"))
+            alert.addButton(withTitle: String(localized: "OK"))
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(shadersDirectory())
+            }
+        }
         effects.clearStatus()
         updateStatusIcon()
     }
