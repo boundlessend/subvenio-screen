@@ -159,16 +159,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateStatusIcon() {
         guard let button = statusItem?.button else { return }
         // свой силуэт вместо системного символа: та же форма, что у иконки приложения.
-        // template-режим означает, что цвет выбирает меню-бар, а не мы
+        // template-режим означает, что цвет выбирает меню-бар, а не мы.
+        // выключенный эффект это тот же телевизор с пустым экраном, а не полупрозрачная
+        // иконка: прозрачность на macOS читается как «недоступно», а не как «выключено»
         let image = effects.status == nil
-            ? NSImage(named: "MenuBarIcon")
+            ? NSImage(named: effects.isEnabled ? "MenuBarIcon" : "MenuBarIconOff")
             : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
         image?.isTemplate = true
-        // тусклая иконка это единственный признак выключенного эффекта, а VoiceOver
-        // тусклости не видит: состояние приходится проговаривать
+        // разницу между залитым и пустым экраном VoiceOver не видит: состояние
+        // приходится проговаривать
         image?.accessibilityDescription = statusDescription()
         button.image = image
-        button.appearsDisabled = !effects.isEnabled && effects.status == nil
         button.toolTip = effects.status?.title ?? effects.selectedPlugin?.manifest.name
     }
 
