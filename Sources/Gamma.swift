@@ -105,7 +105,7 @@ final class GammaController {
 /// читается из обработчика сигнала, поэтому не свойство контроллера, а атомарный флаг
 private nonisolated(unsafe) var gammaIsActive: sig_atomic_t = 0
 
-// ponytail: CGDisplayRestoreColorSyncSettings формально не async-signal-safe, но оставить
+// CGDisplayRestoreColorSyncSettings формально не async-signal-safe, но оставить
 // пользователю перекрашенный экран хуже, чем нарушить букву POSIX в обработчике сигнала.
 // SIGKILL не перехватывается вовсе, там гамму восстанавливает сам WindowServer
 private func installRestoreOnSignals() {

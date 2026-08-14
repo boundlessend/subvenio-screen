@@ -54,7 +54,7 @@ final class WindowTracker {
     private var timer: Timer?
     private var lastFrame: CGRect?
 
-    // ponytail: оверлей остаётся поверх области, даже если целевое окно перекрыли другим.
+    // оверлей остаётся поверх области, даже если целевое окно перекрыли другим.
     // разбор z-order добавится, если это начнёт мешать
     init(windowID: CGWindowID, onChange: @escaping (CGRect?) -> Void) {
         self.windowID = windowID

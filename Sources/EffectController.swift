@@ -44,7 +44,7 @@ final class EffectController: ObservableObject {
         }
     }
 
-    /// на какой монитор кладём эффект. ponytail: один активный эффект на один дисплей.
+    /// на какой монитор кладём эффект. один активный эффект на один дисплей:
     /// независимые пресеты на нескольких мониторах сразу потребуют по контроллеру на дисплей
     @Published var selectedDisplayID: CGDirectDisplayID {
         didSet {

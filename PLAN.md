@@ -55,11 +55,12 @@ white" with an explicit warning in the UI, never as the foundation.
 
 ## Decisions
 
-1. **Purpose and reach.** A private repository for personal use for now. No Mac
-   App Store. The repository goes public later, under the BSD 3-Clause license:
-   permissive like MIT, with the extra clause that keeps the author's name out of
-   endorsements for derived work. Without a license file at all, a public
-   repository would be readable and nothing else.
+1. **Purpose and reach.** A tool written for its author, published as source
+   under the BSD 3-Clause license: permissive like MIT, with the extra clause
+   that keeps the author's name out of endorsements for derived work. Without a
+   license file at all, a public repository would be readable and nothing else.
+   Not on the Mac App Store: the sandbox is on regardless, but the store would
+   add review to a project whose point is the code.
 2. **Effect area.** One global hotkey for the whole display, plus a mode where
    the effect only covers the area of a chosen window. A hotkey per display was
    in this decision from the start and moved to Deferred instead of being built:

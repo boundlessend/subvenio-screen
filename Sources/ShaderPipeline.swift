@@ -1,7 +1,7 @@
 import Metal
 import simd
 
-// ponytail: 8 параметров, потому что uniform-буфер фиксированной длины.
+// 8 параметров, потому что uniform-буфер фиксированной длины.
 // упирается кто-то в потолок, значит пора переходить на MTLBuffer переменной длины
 let maxShaderParameters = 8
 
@@ -89,7 +89,7 @@ func shaderSource(for plugin: ShaderPlugin, source: String) -> String {
     shaderPrelude + parameterDefines(plugin.manifest.parameters ?? []) + "\n" + source
 }
 
-// ponytail: компиляция занимает сотни миллисекунд и результат живёт в памяти до выхода.
+// компиляция занимает сотни миллисекунд и результат живёт в памяти до выхода.
 // дисковый кеш через MTLBinaryArchive появится, когда пресетов станет много или старт станет заметным
 func makePipeline(device: MTLDevice, plugin: ShaderPlugin) throws -> MTLRenderPipelineState {
     let source: String

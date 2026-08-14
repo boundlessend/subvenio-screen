@@ -44,7 +44,7 @@ enum UpdateError: LocalizedError {
     case httpStatus(Int)
     case malformedPayload
 
-    /// репозиторий приватный или релизов в нём ещё нет: и то и другое GitHub отдаёт как 404.
+    /// релизов в репозитории ещё нет, либо он закрыт: и то и другое GitHub отдаёт как 404.
     /// это состояние, а не поломка, и краснеть в интерфейсе ему незачем
     var isMissingRelease: Bool {
         guard case let .httpStatus(code) = self else { return false }
@@ -54,8 +54,8 @@ enum UpdateError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .httpStatus(code) where code == 404:
-            // репозиторий приватный, и так и задумано: это не поломка, а состояние,
-            // и текст не должен звучать как жалоба на GitHub
+            // отвечать нечему, и это не поломка, а состояние: текст не должен
+            // звучать как жалоба на GitHub
             return String(localized: "Nothing to check against yet: this app has no public releases.")
         case let .httpStatus(code) where code == 403 || code == 429:
             // лимит GitHub считается по адресу, а не по приложению: из-под общего
@@ -115,8 +115,8 @@ enum ReleaseCheck: Sendable {
     case unchanged
 }
 
-/// последний релиз репозитория. приватный репозиторий без токена отдаёт 404,
-/// поэтому до публикации исходников проверка честно сообщает, что релизов не видно
+/// последний релиз репозитория. репозиторий без релизов отдаёт 404, и проверка
+/// честно сообщает, что сверяться не с чем, вместо того чтобы ругаться на сеть
 func fetchLatestRelease(etag: String?) async throws -> ReleaseCheck {
     var request = URLRequest(url: latestReleaseURL)
     request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -205,8 +205,8 @@ final class UpdateController: ObservableObject {
         guard let period = interval.period else { return }
         let now = Date()
         if let lastCheck, now.timeIntervalSince(lastCheck) < period { return }
-        // отсчёт идёт и от попытки тоже: без этого недоступный GitHub, приватный
-        // репозиторий или отсутствие сети гнали бы запрос на каждом часовом тике
+        // отсчёт идёт и от попытки тоже: без этого недоступный GitHub, репозиторий
+        // без релизов или отсутствие сети гнали бы запрос на каждом часовом тике
         let attempted = UserDefaults.standard.double(forKey: Self.lastAttemptKey)
         if attempted > 0, now.timeIntervalSince1970 - attempted < period { return }
         UserDefaults.standard.set(now.timeIntervalSince1970, forKey: Self.lastAttemptKey)
