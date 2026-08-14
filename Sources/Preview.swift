@@ -58,9 +58,8 @@ private func previewSignature(_ plugin: ShaderPlugin) -> String {
 final class PreviewView: NSView {
     /// один рендерер на все превью: девайс и очередь команд не зависят от пресета
     private static let renderer = try? OverlayRenderer()
-    /// один кеш на все превью: без него возврат к уже виденному пресету компилирует
-    /// его шейдер заново, а это сотни миллисекунд на главном потоке за каждый шаг
-    private static let pipelines = PipelineCache()
+    /// тот же кеш, что у оверлея: возврат к уже виденному пресету не компилирует
+    /// его заново, а включение эффекта поднимает готовый пайплайн из превью
     /// превью маленькое, поэтому половина частоты дисплея незаметна, а стоит вдвое дешевле
     private static let framesPerSecond: Float = 30
 
@@ -156,7 +155,7 @@ final class PreviewView: NSView {
     private func makePreviewPipeline(for plugin: ShaderPlugin) -> MTLRenderPipelineState? {
         guard let device = Self.renderer?.device else { return nil }
         do {
-            let pipeline = try Self.pipelines.pipeline(for: plugin, device: device)
+            let pipeline = try PipelineCache.shared.pipeline(for: plugin, device: device)
             onFailure?(nil)
             return pipeline
         } catch {

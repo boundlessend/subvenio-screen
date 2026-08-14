@@ -111,7 +111,7 @@ final class OverlayWindow: NSWindow {
 final class OverlayController {
     private var cachedRenderer: OverlayRenderer?
     private var window: OverlayWindow?
-    private let pipelines = PipelineCache()
+    private let pipelines = PipelineCache.shared
     private var displayLink: CADisplayLink?
     private var currentPlugin: ShaderPlugin?
     private var currentDisplayID: CGDirectDisplayID = CGMainDisplayID()
