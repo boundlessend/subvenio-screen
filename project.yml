@@ -47,7 +47,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.senya.SubvenioScreen
         PRODUCT_NAME: "Subvenio Screen"
-        MARKETING_VERSION: "1.6.0"
+        MARKETING_VERSION: "1.7.0"
         # номер сборки идёт за версией, а не стоит на единице: иначе две разные
         # сборки одной версии неотличимы, а поднимать его отдельно значит помнить
         # о втором числе на каждом релизе

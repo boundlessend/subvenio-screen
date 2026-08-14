@@ -4,7 +4,7 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 each one ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
-## Unreleased
+## 1.7.0
 
 ### Added
 
@@ -69,7 +69,6 @@ each one ships as a disk image on the
   release survives a restart, so a 304 no longer hides an update found earlier.
 - **The no-shaders message showed a container path** in the middle of its text.
   It leads to the folder with a button now.
-
 - **Projector pulsed.** Its lamp darkened the whole screen by a quarter: at
   first twice a second, which read as flicker in the band the eye notices most
   and the one that is unsafe for photosensitive people, and then - once the
