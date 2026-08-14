@@ -6,7 +6,69 @@ each one ships as a disk image on the
 
 ## Unreleased
 
+### Added
+
+- **A menu bar strip while the settings window is open.** The app turns itself
+  into an ordinary one to show that window, and until now it did so with an
+  empty bar: no ⌘W, no ⌘Q and no Edit menu, which meant the shader compilation
+  error the window lets you select could not be copied out of it.
+- **Opening the app again opens its settings.** An app with no Dock icon is
+  reached through the menu bar, and a full menu bar hides the icon that reaches
+  it; double-clicking the app in Applications did nothing visible. It now brings
+  up the settings window, and a second copy started some other way asks the
+  running one to show itself instead of quitting silently.
+- **How this works** in the menu bar menu: the same explanation the first launch
+  shows, for the times it is remembered later than it was read.
+- **Slider values can be typed.** Preset descriptions name exact numbers - the
+  green phosphor of Phosphor Terminal is a hue of 0.36 - and dragging was the
+  only way to aim at them.
+- **Links out of the window**: how to write a preset, next to the buttons that
+  create one, and what changed between versions, next to the update check.
+
+### Changed
+
+- **Four tabs instead of five.** Placement and Capture both answered where the
+  effect lands and what it costs there, and they are Display now; Updates held
+  three controls and moved into General. The buttons that manage the whole
+  preset collection left the Effect tab for a Presets tab of their own, where
+  they no longer read as actions on the one preset being tuned - and the sliders'
+  reset button went back to being called "Reset to defaults".
+- **The settings window stops at the edge of the screen.** Its height follows
+  the tab, and a folder of broken presets has no ceiling: fifteen of them used
+  to push the buttons below the bottom edge with no way to reach them. The
+  content scrolls now.
+- **The menu bar icon says on or off by its shape.** The television it draws has
+  a lit screen when the effect is on and an empty one when it is off, instead of
+  the whole icon dimming - a dimmed control on macOS means unavailable.
+- **Presets and levels explain the space switch.** The line under the preview
+  says which levels drop for about a second when you swipe between spaces, and
+  which one does not.
+
 ### Fixed
+
+- **Colours drifted on wide-gamut displays.** Neither the overlay layer nor the
+  capture stream stated a colour space, so the numbers a shader wrote were read
+  in the display's: on Display P3 the same tint came out more saturated, and the
+  preview and the screen disagreed. Everything states sRGB now.
+- **The preview kept animating after Reduce Motion was turned on.** The effect
+  on screen stopped, and the settings window said the preset stays still, while
+  the picture next to that sentence carried on moving.
+- **A crash left the screen tinted.** The gamma table was restored on an orderly
+  quit but not on `SIGSEGV` and its neighbours, so a crash with a level 1 preset
+  on left the display recoloured until the app was started again.
+- **Pressing the hotkey during a level 3 start did nothing.** Starting a capture
+  preset is asynchronous, and a second press while it came up was swallowed
+  instead of cancelling it.
+- **Choosing another display after one was unplugged did not bring the effect
+  back.** It waited for a further display event that never had to come.
+- **A shader was compiled twice**, once for the preview and once for the screen,
+  because the two kept separate pipeline caches.
+- **The update check identifies itself and spends fewer requests.** GitHub
+  requires a User-Agent, the check now sends one and an `If-None-Match`, and a
+  rate-limited answer says so in words instead of "status 403". The last known
+  release survives a restart, so a 304 no longer hides an update found earlier.
+- **The no-shaders message showed a container path** in the middle of its text.
+  It leads to the folder with a button now.
 
 - **Projector pulsed.** Its lamp darkened the whole screen by a quarter: at
   first twice a second, which read as flicker in the band the eye notices most

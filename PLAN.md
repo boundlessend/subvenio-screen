@@ -74,14 +74,37 @@ white" with an explicit warning in the UI, never as the foundation.
    markedly simpler in it.
 5. **UI and configuration.** A menu bar icon for quickly switching presets plus
    a separate settings window for hotkeys, shaders and per-display and
-   per-window rules. The window is the standard macOS preferences shape: five
-   tabs in a toolbar, one screen each, with the window resizing to whatever the
-   current tab needs. It began as one scrolling page, which worked while there
-   were four groups; the fifth pushed the sliders of the selected preset below
-   the fold, and tuning grain while the preview sits off-screen is the one thing
-   this window exists to make easy. The toolbar itself is drawn by the system
-   through `NSWindow.toolbarStyle = .preference`, so the tabs cost no drawing
-   code and behave like every other preferences window on the machine.
+   per-window rules. The window is the standard macOS preferences shape: tabs in
+   a toolbar, one screen each, with the window resizing to whatever the current
+   tab needs. It began as one scrolling page, which worked while there were four
+   groups; the fifth pushed the sliders of the selected preset below the fold,
+   and tuning grain while the preview sits off-screen is the one thing this
+   window exists to make easy. The toolbar itself is drawn by the system through
+   `NSWindow.toolbarStyle = .preference`, so the tabs cost no drawing code and
+   behave like every other preferences window on the machine.
+
+   **Four tabs, and each answers one question.** It was five, split by mechanism
+   rather than by question: Placement and Capture both described where the
+   effect lands and what it costs there, and Updates held three controls of its
+   own. They are Display and General now. The Effect tab lost the other half of
+   its load in the same move: the buttons that manage the preset collection -
+   the folder, the template, restoring the bundled ones, and the list of presets
+   that failed to load - stood next to the sliders of one preset and read as
+   actions on it. They live on a Presets tab, and the sliders' reset button
+   could go back to being called "Reset to defaults" instead of the "Reset the
+   sliders" it was renamed to under the pressure of that neighbourhood.
+
+   **The window never grows past the screen.** Its height follows the tab, and
+   the list of presets that failed to load has no ceiling: fifteen broken
+   folders pushed the buttons below the bottom edge, where nothing could reach
+   them. The content sits in an `NSScrollView` now, so the window stops at the
+   working area of the screen and the rest arrives by scrolling.
+
+   **A menu bar app still needs a menu bar.** The window makes the app `.regular`
+   while it is open, and without `NSApp.mainMenu` that left a bar with nothing
+   in it: no ⌘W, no ⌘Q, and no Edit menu, which meant the shader compilation
+   error the window deliberately lets you select could not be copied. The menu
+   is assembled in code, because there is no NIB to carry it.
 20. **Presets are grouped by rendering level, not sorted by name.** Seventeen
     names in a row read as a directory listing, and the name of a preset says
     nothing about what picking it will cost. The level does: free, one drawn
@@ -188,6 +211,29 @@ white" with an explicit warning in the UI, never as the foundation.
     container, and the "Open shaders folder" button leads there, so putting a
     shader in by hand works the same way. Existing preferences are migrated into
     the container by the system on first launch.
+22. **The icon says on or off by its shape, not by its opacity.** The menu bar
+    icon is a television; the effect being on fills its screen and the effect
+    being off leaves it as an outline. It used to be one icon dimmed through
+    `appearsDisabled`, and a dimmed control on macOS means unavailable, not
+    turned off. The two assets share their geometry down to the coordinate, so
+    switching between them changes the screen of the set and nothing else.
+23. **Opening the app again opens its settings.** An app with no Dock icon and
+    no window is reached through the menu bar, and a menu bar that has run out
+    of room hides the icon that reaches it. Double-clicking the app is what
+    people try next, and Launch Services does not start a second process for
+    that - it sends `applicationShouldHandleReopen`, which now opens the
+    settings window. A second copy started some other way still exists: it asks
+    the running one to show itself over a distributed notification and quits,
+    because two copies mean two gamma tables on one display.
+24. **Colour spaces are stated, not inherited.** The overlay layer, the preview
+    layer and the capture stream all declare sRGB. Left unstated, the numbers a
+    shader writes are read in the colour space of the display: the same tint
+    came out more saturated on Display P3, the preview and the screen disagreed,
+    and "honest black and white" depended on which monitor was plugged in.
+25. **The gamma table is restored on a crash too.** The signal handler covers
+    `SIGSEGV`, `SIGABRT`, `SIGILL`, `SIGBUS` and `SIGFPE` alongside the orderly
+    `SIGTERM`, `SIGINT` and `SIGHUP`. A crash used to leave the screen tinted
+    until the app was launched again, and the handler was already written.
 
 ## System permissions
 

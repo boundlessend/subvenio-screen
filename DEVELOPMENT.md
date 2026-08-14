@@ -39,7 +39,9 @@ DEVELOPMENT_TEAM = <your team id>
 ```
 Sources/            Swift, one file per concern
   AppDelegate       menu bar and window wiring
+  MainMenu          the menu bar strip shown while the settings window is open
   SettingsWindow    the settings window: a tab per screen, SwiftUI
+  SettingsWindowController  the AppKit window, its toolbar and its sizing
   Preview           the preset preview on the bundled picture
   EffectController  state, backend selection, persistence
   PluginSettings    slider values and per-preset options

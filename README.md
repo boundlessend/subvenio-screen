@@ -150,6 +150,11 @@ before you drop it in, the same way you would read a script.
 
 - One effect on one display at a time. You choose which display, but independent
   presets on several monitors at once are not implemented yet.
+- The four free presets share the display's gamma table with Night Shift, f.lux
+  and any custom calibration, and the last one to write it wins. Turning such a
+  preset off restores every display to its ColorSync profile, because the public
+  API to undo a gamma table has no per-display counterpart; whatever else had
+  tinted the screen applies itself again on its own schedule.
 - Invert and Sepia cover the whole display by nature and cannot be confined to a
   single window.
 - The overlay is invisible to screenshots and to screen recording, so the effect
