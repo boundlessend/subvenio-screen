@@ -1,6 +1,5 @@
 {
   "sourceLanguage": "en",
-  "version": "1.0",
   "strings": {
     "\"%@\" is no longer in the shaders folder. Pick another preset.": {
       "extractionState": "manual",
@@ -189,6 +188,17 @@
         }
       }
     },
+    "A preset is a folder with a manifest and a Metal shader. Save a file and the menu updates itself, with no restart.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пресет это папка с манифестом и шейдером Metal. Сохраните файл, и меню обновится само, без перезапуска."
+          }
+        }
+      }
+    },
     "A smaller buffer and a lower rate cost the machine much less, and on a retro effect the difference is hard to see.": {
       "extractionState": "manual",
       "localizations": {
@@ -196,6 +206,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Меньший буфер и низкая частота обходятся машине заметно дешевле, а на ретро-эффекте разницу почти не видно."
+          }
+        }
+      }
+    },
+    "About %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О программе %@"
           }
         }
       }
@@ -299,6 +320,17 @@
         }
       }
     },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть"
+          }
+        }
+      }
+    },
     "Continue": {
       "extractionState": "manual",
       "localizations": {
@@ -306,6 +338,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Продолжить"
+          }
+        }
+      }
+    },
+    "Copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать"
           }
         }
       }
@@ -328,6 +371,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось создать пресет"
+          }
+        }
+      }
+    },
+    "Cut": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вырезать"
+          }
+        }
+      }
+    },
+    "Disconnected display": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключённый дисплей"
+          }
+        }
+      }
+    },
+    "Display": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дисплей"
           }
         }
       }
@@ -372,6 +448,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Скачать %@"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Правка"
           }
         }
       }
@@ -530,6 +617,17 @@
         }
       }
     },
+    "GitHub is rate limiting this network right now. The check works again within the hour.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub сейчас ограничивает запросы с этой сети. Проверка заработает в течение часа."
+          }
+        }
+      }
+    },
     "Half": {
       "extractionState": "manual",
       "localizations": {
@@ -541,6 +639,28 @@
         }
       }
     },
+    "Hide %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть %@"
+          }
+        }
+      }
+    },
+    "Hide Others": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скрыть остальные"
+          }
+        }
+      }
+    },
     "Hotkey: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -548,6 +668,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Хоткей: %@"
+          }
+        }
+      }
+    },
+    "How this works": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как это работает"
+          }
+        }
+      }
+    },
+    "How to write a preset": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как написать пресет"
           }
         }
       }
@@ -596,35 +738,46 @@
         }
       }
     },
-    "Level 1: gamma table. Covers the cursor, the menu bar and the Dock, and costs nothing.": {
+    "Level 1: gamma table. Covers the cursor, the menu bar and the Dock, costs nothing and stays on while you switch spaces.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Уровень 1: гамма-таблица. Покрывает курсор, меню-бар и Dock, ничего не стоит по нагрузке."
+            "value": "Уровень 1: таблица гаммы. Накрывает курсор, меню-бар и Dock, не стоит ничего и остаётся на экране при переключении пространств."
           }
         }
       }
     },
-    "Level 2: a transparent layer above the screen. Needs no permissions.": {
+    "Level 2: a transparent layer above the screen. Needs no permissions, and drops for about a second when you switch spaces.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Уровень 2: прозрачный слой поверх экрана. Разрешений не требует."
+            "value": "Уровень 2: прозрачный слой поверх экрана. Разрешений не требует, при переключении пространств пропадает примерно на секунду."
           }
         }
       }
     },
-    "Level 3: reads the picture on screen. Needs Screen Recording permission.": {
+    "Level 3: reads the picture on screen. Needs Screen Recording permission, and drops for about a second when you switch spaces.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Уровень 3: читает изображение экрана. Требует разрешения Screen Recording."
+            "value": "Уровень 3: читает картинку с экрана. Требует разрешение на запись экрана, при переключении пространств пропадает примерно на секунду."
+          }
+        }
+      }
+    },
+    "Minimize": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать в Dock"
           }
         }
       }
@@ -706,6 +859,17 @@
         }
       }
     },
+    "OK": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
     "One drawn layer": {
       "extractionState": "manual",
       "localizations": {
@@ -761,6 +925,17 @@
         }
       }
     },
+    "Paste": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставить"
+          }
+        }
+      }
+    },
     "Permission not granted": {
       "extractionState": "manual",
       "localizations": {
@@ -779,17 +954,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Выберите окно в настройках или снимите режим «только под окном»."
-          }
-        }
-      }
-    },
-    "Placement": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Размещение"
           }
         }
       }
@@ -816,6 +980,17 @@
         }
       }
     },
+    "Presets": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пресеты"
+          }
+        }
+      }
+    },
     "Presets could not be restored": {
       "extractionState": "manual",
       "localizations": {
@@ -823,6 +998,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось вернуть пресеты"
+          }
+        }
+      }
+    },
+    "Preview of \"%@\" on the bundled sample picture": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Превью «%@» на встроенном образце"
           }
         }
       }
@@ -838,6 +1024,17 @@
         }
       }
     },
+    "Quit %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завершить %@"
+          }
+        }
+      }
+    },
     "Reads the screen": {
       "extractionState": "manual",
       "localizations": {
@@ -845,6 +1042,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Читают экран"
+          }
+        }
+      }
+    },
+    "Redo": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить"
           }
         }
       }
@@ -860,13 +1068,13 @@
         }
       }
     },
-    "Reset the sliders": {
+    "Reset to defaults": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сбросить ползунки"
+            "value": "Вернуть значения по умолчанию"
           }
         }
       }
@@ -937,6 +1145,17 @@
         }
       }
     },
+    "Select All": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать все"
+          }
+        }
+      }
+    },
     "Settings…": {
       "extractionState": "manual",
       "localizations": {
@@ -1003,6 +1222,17 @@
         }
       }
     },
+    "The Presets tab restores the bundled ones.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встроенные возвращает вкладка «Пресеты»."
+          }
+        }
+      }
+    },
     "The cursor moves inside the captured frame and lags by the whole pipeline delay, which reads as a laggy mouse.": {
       "extractionState": "manual",
       "localizations": {
@@ -1036,6 +1266,17 @@
         }
       }
     },
+    "The preview runs on a bundled picture at its own size, so a pattern this fine covers fewer pixels here than it will on the screen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Превью идёт на встроенной картинке и в своём размере, поэтому мелкий узор ложится здесь на меньшее число пикселей, чем ляжет на экране."
+          }
+        }
+      }
+    },
     "The selected preset does not read the screen. These settings apply to level 3 presets.": {
       "extractionState": "manual",
       "localizations": {
@@ -1065,6 +1306,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Выбранное окно закрыто или свёрнуто."
+          }
+        }
+      }
+    },
+    "The shaders folder holds no presets. Restore the bundled ones in settings, or put a preset in yourself.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В папке шейдеров нет ни одного пресета. Верните встроенные в настройках или положите свой."
           }
         }
       }
@@ -1157,6 +1409,17 @@
         }
       }
     },
+    "Undo": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить"
+          }
+        }
+      }
+    },
     "Up to date. Last checked %@": {
       "extractionState": "manual",
       "localizations": {
@@ -1186,6 +1449,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Доступна версия %@"
+          }
+        }
+      }
+    },
+    "What changed between versions": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Что изменилось между версиями"
+          }
+        }
+      }
+    },
+    "Window": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Окно"
+          }
+        }
+      }
+    },
+    "Window is closed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Окно закрыто"
           }
         }
       }
@@ -1344,5 +1640,6 @@
         }
       }
     }
-  }
+  },
+  "version": "1.0"
 }
