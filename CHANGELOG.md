@@ -8,13 +8,15 @@ each one ships as a disk image on the
 
 ### Fixed
 
-- **Projector flickered instead of breathing.** Its lamp wobbled at 1.75 Hz and
-  4.3 Hz, which darkened the whole screen by a quarter about twice a second -
-  the band the eye notices most, and the one that is unsafe for photosensitive
-  people. It now wobbles at 0.37 Hz and 0.59 Hz: the same depth and the same
-  two-frequency shape, but the alpha moves six times slower per frame. The
-  other animated presets were measured the same way and change the screen by
-  two or three percent at most, locally rather than all at once.
+- **Projector pulsed.** Its lamp darkened the whole screen by a quarter: at
+  first twice a second, which read as flicker in the band the eye notices most
+  and the one that is unsafe for photosensitive people, and then - once the
+  wobble was slowed to 0.37 Hz - as breathing every few seconds. Slowing it
+  never removed it, because the depth stayed the same. The brightness
+  modulation is gone entirely, the Flicker slider with it, and Projector is now
+  a steady vignette that stops redrawing once it is on. The other animated
+  presets change the screen by two or three percent at most, locally rather
+  than all at once.
 
 ## 1.6.0
 

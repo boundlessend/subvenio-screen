@@ -1,22 +1,13 @@
 {
   "name": "Projector",
   "description": {
-    "en": "The lamp breathing on two frequencies, the corners in shadow.",
-    "ru": "Дыхание лампы на двух частотах, затемнённые углы."
+    "en": "Even lamp light, the corners falling into shadow.",
+    "ru": "Ровный свет лампы, затемнённые углы."
   },
   "level": 2,
   "icon": "sun.max",
-  "animated": true,
+  "animated": false,
   "parameters": [
-    {
-      "name": "flickerStrength",
-      "title": {
-        "ru": "Мерцание"
-      },
-      "min": 0,
-      "max": 1,
-      "default": 0.5
-    },
     {
       "name": "vignetteStrength",
       "title": {
