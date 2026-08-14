@@ -57,6 +57,11 @@ enum UpdateError: LocalizedError {
             // репозиторий приватный, и так и задумано: это не поломка, а состояние,
             // и текст не должен звучать как жалоба на GitHub
             return String(localized: "Nothing to check against yet: this app has no public releases.")
+        case let .httpStatus(code) where code == 403 || code == 429:
+            // лимит GitHub считается по адресу, а не по приложению: из-под общего
+            // выхода в интернет его исчерпывает кто-то другой, и «status 403»
+            // читается как поломка, хотя ждать надо меньше часа
+            return String(localized: "GitHub is rate limiting this network right now. The check works again within the hour.")
         case let .httpStatus(code):
             return String(format: String(localized: "GitHub answered with status %lld"), code)
         case .malformedPayload:
@@ -103,16 +108,36 @@ private struct ReleasePayload: Decodable {
     }
 }
 
+/// ответ GitHub на вопрос о последнем релизе
+enum ReleaseCheck: Sendable {
+    case release(AppRelease, etag: String?)
+    /// с прошлой проверки ничего не изменилось: ответ 304 по If-None-Match
+    case unchanged
+}
+
 /// последний релиз репозитория. приватный репозиторий без токена отдаёт 404,
 /// поэтому до публикации исходников проверка честно сообщает, что релизов не видно
-func fetchLatestRelease() async throws -> AppRelease {
+func fetchLatestRelease(etag: String?) async throws -> ReleaseCheck {
     var request = URLRequest(url: latestReleaseURL)
     request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+    // GitHub требует User-Agent и отвечает 403 запросу без него. заодно это
+    // единственная строка, по которой в его логах видно, кто спрашивает
+    request.setValue(
+        "SubvenioScreen/\(currentAppVersion())",
+        forHTTPHeaderField: "User-Agent"
+    )
+    // условный запрос: ответ 304 не расходует лимит в 60 запросов в час на адрес
+    if let etag {
+        request.setValue(etag, forHTTPHeaderField: "If-None-Match")
+    }
     request.timeoutInterval = 15
 
     let (data, response) = try await URLSession.shared.data(for: request)
     guard let http = response as? HTTPURLResponse else {
         throw UpdateError.malformedPayload
+    }
+    if http.statusCode == 304 {
+        return .unchanged
     }
     guard http.statusCode == 200 else {
         throw UpdateError.httpStatus(http.statusCode)
@@ -123,7 +148,10 @@ func fetchLatestRelease() async throws -> AppRelease {
     }
     // тег в интерфейсе показывать незачем: "v1.2.0" читается как опечатка рядом с "1.1.0"
     let version = payload.tagName.drop(while: { !$0.isNumber })
-    return AppRelease(version: String(version), url: url)
+    return .release(
+        AppRelease(version: String(version), url: url),
+        etag: http.value(forHTTPHeaderField: "ETag")
+    )
 }
 
 /// проверка обновлений через страницу релизов GitHub: ни загрузки, ни установки,
@@ -133,6 +161,9 @@ final class UpdateController: ObservableObject {
     private static let intervalKey = "updates.interval"
     private static let lastCheckKey = "updates.lastCheck"
     private static let lastAttemptKey = "updates.lastAttempt"
+    private static let etagKey = "updates.etag"
+    private static let latestVersionKey = "updates.latestVersion"
+    private static let latestURLKey = "updates.latestURL"
 
     @Published private(set) var available: AppRelease?
     @Published private(set) var lastCheck: Date?
@@ -148,10 +179,24 @@ final class UpdateController: ObservableObject {
     }
 
     init() {
-        let stored = UserDefaults.standard.string(forKey: Self.intervalKey)
+        let defaults = UserDefaults.standard
+        let stored = defaults.string(forKey: Self.intervalKey)
         interval = stored.flatMap(UpdateInterval.init(rawValue:)) ?? .weekly
-        let storedCheck = UserDefaults.standard.double(forKey: Self.lastCheckKey)
+        let storedCheck = defaults.double(forKey: Self.lastCheckKey)
         lastCheck = storedCheck > 0 ? Date(timeIntervalSince1970: storedCheck) : nil
+        // последний известный релиз переживает перезапуск: иначе после условного
+        // запроса, на который GitHub ответил 304, приложение не знало бы о версии,
+        // про которую узнало неделю назад
+        available = Self.storedRelease(defaults).flatMap {
+            isVersion($0.version, newerThan: currentAppVersion()) ? $0 : nil
+        }
+    }
+
+    private static func storedRelease(_ defaults: UserDefaults) -> AppRelease? {
+        guard let version = defaults.string(forKey: latestVersionKey),
+              let text = defaults.string(forKey: latestURLKey),
+              let url = URL(string: text) else { return nil }
+        return AppRelease(version: version, url: url)
     }
 
     /// плановая проверка: молчит в интерфейсе и пишет неудачи только в лог,
@@ -191,13 +236,24 @@ final class UpdateController: ObservableObject {
         lastFailure = nil
         defer { isChecking = false }
 
-        let release = try await fetchLatestRelease()
+        let defaults = UserDefaults.standard
         let current = currentAppVersion()
-        available = isVersion(release.version, newerThan: current) ? release : nil
+        let answer = try await fetchLatestRelease(etag: defaults.string(forKey: Self.etagKey))
+
+        switch answer {
+        case .unchanged:
+            Log.updates.info("checked: unchanged since the last call")
+        case let .release(release, etag):
+            defaults.set(etag, forKey: Self.etagKey)
+            defaults.set(release.version, forKey: Self.latestVersionKey)
+            defaults.set(release.url.absoluteString, forKey: Self.latestURLKey)
+            available = isVersion(release.version, newerThan: current) ? release : nil
+            Log.updates.info(
+                "checked: latest \(release.version, privacy: .public), running \(current, privacy: .public)"
+            )
+        }
+
         lastCheck = Date()
-        UserDefaults.standard.set(lastCheck?.timeIntervalSince1970, forKey: Self.lastCheckKey)
-        Log.updates.info(
-            "checked: latest \(release.version, privacy: .public), running \(current, privacy: .public)"
-        )
+        defaults.set(lastCheck?.timeIntervalSince1970, forKey: Self.lastCheckKey)
     }
 }
