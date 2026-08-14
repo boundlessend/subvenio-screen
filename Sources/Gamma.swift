@@ -109,7 +109,9 @@ private nonisolated(unsafe) var gammaIsActive: sig_atomic_t = 0
 // пользователю перекрашенный экран хуже, чем нарушить букву POSIX в обработчике сигнала.
 // SIGKILL не перехватывается вовсе, там гамму восстанавливает сам WindowServer
 private func installRestoreOnSignals() {
-    for code in [SIGTERM, SIGINT, SIGHUP] {
+    // аварийные коды здесь наравне со штатными: падение приложения оставляло экран
+    // перекрашенным до следующего запуска, а обработчик уже написан и стоит четырёх строк
+    for code in [SIGTERM, SIGINT, SIGHUP, SIGSEGV, SIGABRT, SIGILL, SIGBUS, SIGFPE] {
         signal(code) { code in
             // таблицу не трогали: восстанавливать нечего, и чужие настройки цвета целы
             if gammaIsActive != 0 {
