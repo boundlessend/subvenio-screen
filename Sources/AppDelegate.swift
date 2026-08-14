@@ -135,7 +135,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let alert = NSAlert()
         alert.messageText = String(localized: "Subvenio Screen lives in the menu bar")
         alert.informativeText = welcomeText()
-        alert.icon = NSImage(named: "AppIcon")
+        // иконку ставит система, а не мы: NSImage(named:) отдаёт картинку из каталога
+        // ассетов как есть, квадратом, потому что форму приложения рисует не она,
+        // а маска, которую macOS накладывает в Dock и в Finder
+        alert.icon = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
         alert.addButton(withTitle: String(localized: "Open Settings"))
         alert.addButton(withTitle: String(localized: "Later"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
