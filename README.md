@@ -105,6 +105,13 @@ The eight presets that read the screen ask for the Screen Recording permission -
 and only the first time you turn one on by hand. The other nine work without any
 permission at all, and refusing leaves them fully usable.
 
+Swiping between spaces drops every preset except the free four for about a
+second, until the new space settles. macOS assembles that animation in the
+compositor and leaves ordinary windows out of it, so a drawn layer cannot be
+shown during the switch at any window level. The free four are not drawn as a
+layer at all - they are a table applied to the display itself, after everything
+else - so they are the ones that stay on through the transition.
+
 The last three are worth a warning: quantising the screen to two shades or four
 makes small text hard to read. They are effects to look at rather than to work
 under.

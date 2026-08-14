@@ -291,6 +291,20 @@ seconds, and look at how far the average alpha moves between two frames at 60 Hz
 and at how far it travels across the whole run. The animated presets step under
 0.02 per frame and never move the whole frame at once.
 
+**Only level 1 survives a space switch.** Swiping between spaces drops the
+overlay for about a second, and no window setting brings it back. The window is
+never ordered out - polled at 125 Hz across several switches it stayed onscreen
+at alpha 1 in every sample - and no other window rises above it, so nothing is
+covering it either. macOS builds the transition in the compositor, out of
+per-space surfaces, and ordinary windows are not composited into it. A probe of
+four stripes at screenSaver, assistiveTechHigh, shielding and cursor levels lost
+all four the same way, which is as high as window levels go. Gamma holds
+throughout, because `CGSetDisplayTransferByTable` is applied on scanout, after
+everything the compositor did. So an always-on effect means a level 1 preset,
+and levels 2 and 3 blink on every space switch by construction. This belongs in
+the README rather than in a warning next to each preset, for the same reason the
+quantising presets carry theirs there.
+
 **A level 2 layer cannot dim one channel.** The overlay composites through a
 single alpha, so a coloured mask that leaves one channel alone and darkens the
 other two is impossible there. Anything per-channel is level 3 by construction,
