@@ -6,6 +6,12 @@ import KeyboardShortcuts
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let didShowWelcomeKey = "didShowWelcome"
+    /// вторая копия просит первую показаться и выходит. без этого повторный запуск
+    /// из Finder не делал ничего видимого, а это единственный путь к приложению,
+    /// когда иконка в меню-баре уехала в переполнение и хоткей забыт
+    private static let showSettingsNotification = Notification.Name(
+        "dev.senya.SubvenioScreen.showSettings"
+    )
 
     private var statusItem: NSStatusItem?
     private let effects = EffectController()
@@ -19,6 +25,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSApp.terminate(nil)
             return
         }
+
+        // строка меню нужна только при открытом окне настроек, но собирается сразу:
+        // в accessory-режиме её всё равно не видно
+        NSApp.mainMenu = makeMainMenu(
+            target: self,
+            settingsAction: #selector(openSettings),
+            aboutAction: #selector(showAbout)
+        )
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(showSettingsFromSecondLaunch),
+            name: Self.showSettingsNotification,
+            object: nil
+        )
 
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // положение иконки в меню-баре переживает перезапуск
@@ -53,7 +73,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .runningApplications(withBundleIdentifier: identifier)
             .filter { $0 != .current }
         guard !others.isEmpty else { return false }
-        Log.effects.info("another copy is already running, quitting this one")
+        Log.effects.info("another copy is already running, asking it to show settings")
+        // sandbox пропускает распределённое уведомление только с пустым object
+        DistributedNotificationCenter.default().postNotificationName(
+            Self.showSettingsNotification,
+            object: nil,
+            userInfo: nil,
+            deliverImmediately: true
+        )
+        return true
+    }
+
+    /// система восстанавливает окна между запусками, и без явного ответа пишет
+    /// об этом в консоль на каждом старте
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        true
+    }
+
+    /// двойной клик по уже запущенному приложению: второго процесса Launch Services
+    /// не создаёт, а присылает это. без ответа клик не делает ничего видимого,
+    /// хотя приложение без иконки в Dock открывают именно так, когда не могут найти
+    /// его в переполненном меню-баре
+    func applicationShouldHandleReopen(_ app: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        openSettings()
         return true
     }
 
@@ -83,7 +125,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func showWelcomeOnFirstLaunch() {
         guard !UserDefaults.standard.bool(forKey: Self.didShowWelcomeKey) else { return }
         UserDefaults.standard.set(true, forKey: Self.didShowWelcomeKey)
+        showWelcome()
+    }
 
+    /// то же объяснение по требованию: приветствие показывается один раз, а забывается
+    /// не один, и без пункта в меню вернуться к нему было бы нечем
+    @objc private func showWelcome() {
         activateApp()
         let alert = NSAlert()
         alert.messageText = String(localized: "Subvenio Screen lives in the menu bar")
@@ -186,6 +233,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openReleasePage() {
         guard let release = updates.available else { return }
         NSWorkspace.shared.open(release.url)
+    }
+
+    /// приложение запустили повторно, пока копия уже работала: она и открывает окно
+    @objc private func showSettingsFromSecondLaunch(_ notification: Notification) {
+        openSettings()
     }
 
     @objc private func openSettings() {
@@ -301,6 +353,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(item)
         }
 
+        addTailItems(to: menu)
+    }
+
+    /// настройки, помощь и выход: хвост меню не зависит от состояния эффекта
+    private func addTailItems(to menu: NSMenu) {
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(
@@ -311,6 +368,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsItem.target = self
         settingsItem.image = menuIcon("gearshape")
         menu.addItem(settingsItem)
+
+        let welcome = NSMenuItem(
+            title: String(localized: "How this works"),
+            action: #selector(showWelcome),
+            keyEquivalent: ""
+        )
+        welcome.target = self
+        welcome.image = menuIcon("questionmark.circle")
+        menu.addItem(welcome)
 
         let about = NSMenuItem(
             title: String(localized: "About Subvenio Screen"),
