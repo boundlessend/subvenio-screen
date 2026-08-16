@@ -18,5 +18,7 @@ test: project
 release: project
 	./scripts/release.sh
 
+# dist не трогаем: там лежат собранные образы выпущенных версий,
+# и пересобрать их можно только откатившись на соответствующий тег
 clean:
-	rm -rf build dist $(PROJECT)
+	rm -rf build $(PROJECT)

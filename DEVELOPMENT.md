@@ -23,10 +23,12 @@ What `.swiftlint.yml` turns off is turned off with the reason next to it.
 `MARKETING_VERSION` in `project.yml`, tag the commit (`git tag -a v1.1.0`) and
 attach the disk image to a GitHub release.
 
-Signing defaults to automatic and needs nothing from you. TCC binds the Screen
-Recording grant to team id plus bundle id, so a stable signature keeps the
-permission across rebuilds where an ad-hoc one would lose it every time. To pin
-your own certificate, create `Signing.local.xcconfig` (git-ignored):
+Signing defaults to ad-hoc and needs nothing from you: no developer account, no
+certificate. The cost shows up only on level 3 presets, where TCC binds the
+Screen Recording grant to team id plus bundle id: an ad-hoc signature changes
+from build to build, so the permission has to be granted again after each one. If
+you work on capture regularly, pin your own certificate in
+`Signing.local.xcconfig` (git-ignored) and the grant survives rebuilds:
 
 ```
 CODE_SIGN_STYLE = Manual
