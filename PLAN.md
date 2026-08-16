@@ -235,6 +235,13 @@ white" with an explicit warning in the UI, never as the foundation.
     `SIGSEGV`, `SIGABRT`, `SIGILL`, `SIGBUS` and `SIGFPE` alongside the orderly
     `SIGTERM`, `SIGINT` and `SIGHUP`. A crash used to leave the screen tinted
     until the app was launched again, and the handler was already written.
+    The price is worth stating plainly: `CGDisplayRestoreColorSyncSettings` is
+    not async-signal-safe, so on the orderly signals the trade is free, while on
+    the crash signals a fault raised inside the allocator can deadlock the
+    handler instead of restoring anything. The failure mode there is a hung
+    process rather than a crash report. A tinted screen that outlives the app is
+    the more likely accident of the two, so the handler stays; if the hang is
+    ever observed, the crash signals come back out.
 
 ## System permissions
 
