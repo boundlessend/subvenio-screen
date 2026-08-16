@@ -30,7 +30,14 @@ final class EffectController: ObservableObject {
     @Published private(set) var plugins: [ShaderPlugin] = []
     @Published private(set) var loadErrors: [PluginError] = []
     @Published private(set) var isEnabled = false
+    /// запуск уровня 3 асинхронный, и пока он идёт, isEnabled ещё false.
+    /// публикуется, потому что по нему рисуется переключатель в настройках
+    @Published private(set) var isStarting = false
     @Published private(set) var status: EffectStatus?
+
+    /// эффект на экране или как раз туда едет. смена пресета в момент подъёма
+    /// потока захвата иначе терялась бы: didSet смотрел бы на ещё выключенный эффект
+    var isActive: Bool { isEnabled || isStarting }
     /// список экранов меняется редко, а читается на каждый перерасчёт настроек
     @Published private(set) var displays: [DisplayChoice] = availableDisplays()
 
@@ -38,7 +45,7 @@ final class EffectController: ObservableObject {
         didSet {
             guard selectedIdentifier != oldValue else { return }
             UserDefaults.standard.set(selectedIdentifier, forKey: Self.selectedShaderKey)
-            if isEnabled {
+            if isActive {
                 enable()
             }
         }
@@ -50,7 +57,7 @@ final class EffectController: ObservableObject {
         didSet {
             guard selectedDisplayID != oldValue else { return }
             UserDefaults.standard.set(Int(selectedDisplayID), forKey: Self.selectedDisplayKey)
-            if isEnabled {
+            if isActive {
                 enable()
             } else if waitingForDisplay, screen(for: selectedDisplayID) != nil {
                 // эффект сняли вместе с пропавшим монитором, и человек выбрал другой:
@@ -67,7 +74,7 @@ final class EffectController: ObservableObject {
         didSet {
             guard windowModeEnabled != oldValue else { return }
             UserDefaults.standard.set(windowModeEnabled, forKey: Self.windowModeKey)
-            if isEnabled {
+            if isActive {
                 enable()
             } else {
                 tracker = nil
@@ -77,7 +84,7 @@ final class EffectController: ObservableObject {
 
     @Published var trackedWindowID: CGWindowID? {
         didSet {
-            guard trackedWindowID != oldValue, isEnabled, windowModeEnabled else { return }
+            guard trackedWindowID != oldValue, isActive, windowModeEnabled else { return }
             enable()
         }
     }
@@ -89,7 +96,7 @@ final class EffectController: ObservableObject {
             guard captureQuality != oldValue else { return }
             UserDefaults.standard.set(captureQuality.scale, forKey: Self.captureScaleKey)
             UserDefaults.standard.set(captureQuality.frameRateCap, forKey: Self.captureFrameRateKey)
-            if isEnabled, selectedPlugin?.manifest.level == .capture {
+            if isActive, selectedPlugin?.manifest.level == .capture {
                 enable()
             }
         }
@@ -100,8 +107,6 @@ final class EffectController: ObservableObject {
     private let settings = PluginSettings()
     private var tracker: WindowTracker?
     private var watcher: PluginWatcher?
-    /// запуск уровня 3 асинхронный: без этого второй хоткей поднимает второй поток захвата
-    private var isStarting = false
     /// номер поколения включения: пока асинхронный старт уровня 3 идёт, эффект могли
     /// выключить. состояние «включено» с чужим номером означало бы работу без окна
     private var enableGeneration = 0
@@ -269,7 +274,7 @@ final class EffectController: ObservableObject {
         // нажатие во время асинхронного старта уровня 3 отменяет его, а не пропадает:
         // человек, нажавший второй раз, передумал или решил, что не сработало,
         // и молчание в ответ - худший из возможных ответов
-        if isEnabled || isStarting {
+        if isActive {
             // выключил человек, а не пропавший монитор: ждать возвращения нечего
             waitingForDisplay = false
             disable()
@@ -279,7 +284,6 @@ final class EffectController: ObservableObject {
     }
 
     func enable() {
-        guard !isStarting else { return }
         waitingForDisplay = false
         guard let plugin = selectedPlugin else {
             reportMissingPlugin()
@@ -287,6 +291,9 @@ final class EffectController: ObservableObject {
         }
 
         enableGeneration += 1
+        // старт, который сейчас идёт, поднимает уже не тот эффект, о котором просят:
+        // свой флаг он больше не сбросит, потому что уедет по чужому поколению
+        isStarting = false
         tracker = nil
         guard let frame = targetFrame(for: plugin) else {
             disable()
@@ -324,6 +331,7 @@ final class EffectController: ObservableObject {
 
     func disable() {
         enableGeneration += 1
+        isStarting = false
         tracker = nil
         overlay.hide()
         gamma.deactivate()
@@ -452,7 +460,9 @@ final class EffectController: ObservableObject {
         isStarting = true
         let generation = enableGeneration
         Task { @MainActor in
-            defer { isStarting = false }
+            // флаг сбрасывает тот старт, который его поставил: пришедший следом
+            // enable или disable уже погасил его сам и мог поднять свой
+            defer { if generation == enableGeneration { isStarting = false } }
             do {
                 try await overlay.showCapture(
                     plugin: plugin,
