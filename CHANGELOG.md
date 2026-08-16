@@ -4,6 +4,37 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 each one ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
+## 1.7.1
+
+### Fixed
+
+- **The icon in the "How this works" window was a square.** It came straight
+  out of the asset catalogue, where it is drawn as one; the rounded shape every
+  app has in the Dock is a mask macOS applies at display time, and asking the
+  system for the icon gets the mask with it.
+- **A preset picked while a level 3 effect was starting went nowhere.** Bringing
+  up a capture stream takes a moment, and during it the effect counted as
+  neither on nor off, so the change was dropped and the stream came up with the
+  previous preset: the menu ticked one thing and the screen showed another. The
+  same held for the display, the tracked window and the capture quality. The
+  toggle in settings had the matching half of the problem, ignoring a click that
+  the hotkey would have acted on.
+- **A preset could ask for a gamma of zero.** Parameters were validated down to
+  the range of every slider while the gamma section next to them was not, so a
+  manifest with a zero or an out-of-range point turned the screen into one flat
+  colour instead of naming the mistake.
+- **Capture failed on displays that report no refresh rate.** Some virtual
+  displays answer zero, which made an invalid frame interval; they get sixty now.
+- **The window tracker kept polling while the screen slept.** Everything else
+  pauses with the screen; this one asked sixty times a second for a rectangle
+  nobody could see.
+
+### Changed
+
+- **Building from source no longer needs a developer certificate.** The default
+  signature is ad-hoc, which builds on any machine. Working on level 3 still
+  wants a real certificate, because the Screen Recording grant is tied to it.
+
 ## 1.7.0
 
 ### Added
