@@ -34,6 +34,17 @@
         }
       }
     },
+    "%@: \"%@\" in the gamma section is out of range": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: значение «%@» в секции gamma вне допустимых границ"
+          }
+        }
+      }
+    },
     "%@: \"%@\" is not a valid parameter name, letters, digits and _ only": {
       "extractionState": "manual",
       "localizations": {

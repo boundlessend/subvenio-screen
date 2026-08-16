@@ -111,6 +111,7 @@ enum PluginError: LocalizedError {
     case sourceMissing(plugin: String)
     case gammaSettingsMissing(plugin: String)
     case invalidGammaTint(plugin: String, count: Int)
+    case invalidGammaValue(plugin: String, field: String)
     case unsupportedLevel(plugin: String, level: RenderLevel)
     case tooManyParameters(plugin: String, count: Int)
     case invalidParameterName(plugin: String, name: String)
@@ -145,6 +146,11 @@ enum PluginError: LocalizedError {
             return String(
                 format: String(localized: "%@: tint must hold 3 values, not %lld"),
                 plugin, count
+            )
+        case let .invalidGammaValue(plugin, field):
+            return String(
+                format: String(localized: "%@: \"%@\" in the gamma section is out of range"),
+                plugin, field
             )
         case let .unsupportedLevel(plugin, level):
             return String(
@@ -192,6 +198,7 @@ enum PluginError: LocalizedError {
              let .sourceMissing(plugin),
              let .gammaSettingsMissing(plugin),
              let .invalidGammaTint(plugin, _),
+             let .invalidGammaValue(plugin, _),
              let .unsupportedLevel(plugin, _),
              let .tooManyParameters(plugin, _),
              let .invalidParameterName(plugin, _),
@@ -425,6 +432,9 @@ private func pluginKind(
         guard gamma.tint.count == 3 else {
             return .failure(.invalidGammaTint(plugin: manifest.name, count: gamma.tint.count))
         }
+        if let field = invalidGammaField(gamma) {
+            return .failure(.invalidGammaValue(plugin: manifest.name, field: field))
+        }
         return .success(.gamma(gamma))
 
     case .overlay, .capture:
@@ -459,6 +469,19 @@ private func validate(_ parameters: [ShaderParameter], of plugin: String) -> Plu
             return .invalidParameterDefault(plugin: plugin, parameter: parameter.name)
         }
     }
+    return nil
+}
+
+/// gamma-секция приходит из того же манифеста, что и parameters, и границы ей нужны
+/// такие же. нулевая гамма уходит в показатель степени делением на ноль, а точки
+/// за пределами [0, 1] молча схлопываются клиппингом: экран становится сплошной
+/// заливкой, и это читается как поломка приложения, а не как ошибка в пресете
+private func invalidGammaField(_ gamma: GammaSettings) -> String? {
+    guard gamma.gamma > 0, gamma.gamma.isFinite else { return "gamma" }
+    guard (0...1).contains(gamma.blackPoint) else { return "blackPoint" }
+    guard (0...1).contains(gamma.whitePoint) else { return "whitePoint" }
+    // tint выше единицы это усиление канала, а не ошибка: запрещён только отрицательный
+    guard gamma.tint.allSatisfy({ $0 >= 0 && $0.isFinite }) else { return "tint" }
     return nil
 }
 

@@ -104,6 +104,44 @@ final class PluginLoadingTests: XCTestCase {
         }
     }
 
+    /// ноль уходит в показатель степени делением на ноль
+    func testZeroGammaIsRejected() throws {
+        let directory = try makePlugin(manifest: """
+        {"name": "Broken", "level": 1, "gamma": {"tint": [1, 1, 1], "gamma": 0,
+         "invert": false, "blackPoint": 0, "whitePoint": 1}}
+        """)
+        let loaded = loadPlugins(from: directory)
+
+        guard case .invalidGammaValue? = loaded.errors.first else {
+            return XCTFail("expected invalidGammaValue, got \(loaded.errors)")
+        }
+    }
+
+    /// точка за пределами [0, 1] схлопывается клиппингом в сплошную заливку экрана
+    func testWhitePointOutsideTheRangeIsRejected() throws {
+        let directory = try makePlugin(manifest: """
+        {"name": "Broken", "level": 1, "gamma": {"tint": [1, 1, 1], "gamma": 1,
+         "invert": false, "blackPoint": 0, "whitePoint": 4}}
+        """)
+        let loaded = loadPlugins(from: directory)
+
+        guard case .invalidGammaValue? = loaded.errors.first else {
+            return XCTFail("expected invalidGammaValue, got \(loaded.errors)")
+        }
+    }
+
+    /// усиление канала выше единицы это приём, а не ошибка
+    func testTintAboveOneIsAllowed() throws {
+        let directory = try makePlugin(manifest: """
+        {"name": "Bright", "level": 1, "gamma": {"tint": [1.4, 1, 1],
+         "gamma": 1, "invert": false, "blackPoint": 0, "whitePoint": 1}}
+        """)
+        let loaded = loadPlugins(from: directory)
+
+        XCTAssertTrue(loaded.errors.isEmpty, "\(loaded.errors.map(\.localizedDescription))")
+        XCTAssertEqual(loaded.plugins.count, 1)
+    }
+
     private func makePlugin(manifest: String) throws -> URL {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("SubvenioScreenTests-\(UUID().uuidString)")
