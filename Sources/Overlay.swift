@@ -281,7 +281,11 @@ final class OverlayController {
         return DisplayProfile(
             size: target.frame.size,
             scale: target.backingScaleFactor,
-            framesPerSecond: target.maximumFramesPerSecond
+            // часть виртуальных дисплеев (DisplayLink, Sidecar) отдаёт нулевую частоту,
+            // а из неё вышел бы нулевой timescale, то есть невалидный CMTime у захвата
+            framesPerSecond: target.maximumFramesPerSecond > 0
+                ? target.maximumFramesPerSecond
+                : 60
         )
     }
 
