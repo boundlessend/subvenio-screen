@@ -60,16 +60,41 @@ final class WindowTracker {
         self.windowID = windowID
         self.onChange = onChange
 
+        // оверлей на время сна экрана снимают, а трекер про сон не знал и продолжал
+        // будить процессор шестьдесят раз в секунду ради рамки, которую никто не видит
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspace.addObserver(
+            self,
+            selector: #selector(pause),
+            name: NSWorkspace.screensDidSleepNotification,
+            object: nil
+        )
+        workspace.addObserver(
+            self,
+            selector: #selector(resume),
+            name: NSWorkspace.screensDidWakeNotification,
+            object: nil
+        )
+        resume()
+    }
+
+    deinit {
+        timer?.invalidate()
+    }
+
+    @objc private func pause() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    @objc private func resume() {
+        guard timer == nil else { return }
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             self?.poll()
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
         poll()
-    }
-
-    deinit {
-        timer?.invalidate()
     }
 
     private func poll() {
