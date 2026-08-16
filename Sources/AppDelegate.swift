@@ -115,6 +115,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// без этого после выхода экран остался бы перекрашенным
     func applicationWillTerminate(_ notification: Notification) {
+        updateTimer?.invalidate()
+        updateTimer = nil
         effects.flushParameters()
         effects.restoreGamma()
     }

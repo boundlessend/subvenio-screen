@@ -49,7 +49,9 @@ private func previewSignature(_ plugin: ShaderPlugin) -> String {
     case let .gamma(settings):
         return "\(plugin.identifier)|\(settings.tint)|\(settings.gamma)|\(settings.invert)|\(settings.blackPoint)|\(settings.whitePoint)"
     case let .overlay(source), let .capture(source):
-        return "\(plugin.identifier)|\(source.hashValue)"
+        // исходник целиком, а не его хеш: рядом лежит PipelineCache, который ключуется
+        // тем же самым, и два разных ответа на один вопрос расходятся незаметно
+        return "\(plugin.identifier)|\(source)"
     }
 }
 

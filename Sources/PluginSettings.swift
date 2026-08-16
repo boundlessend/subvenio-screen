@@ -54,10 +54,15 @@ final class PluginSettings {
         pending.removeAll()
     }
 
-    /// пресет удалили с диска: его настройки больше некому читать
+    /// пресет удалили с диска: его настройки больше некому читать.
+    /// домен берётся свой, а не dictionaryRepresentation: тот отдаёт ещё и системные
+    /// ключи вместе с чужими доменами, а искать среди них нечего
     func forget(outside live: Set<String>) {
         let defaults = UserDefaults.standard
-        for key in defaults.dictionaryRepresentation().keys {
+        let domain = Bundle.main.bundleIdentifier.flatMap {
+            defaults.persistentDomain(forName: $0)
+        } ?? [:]
+        for key in domain.keys {
             guard let identifier = key.split(separator: ".", maxSplits: 1).last.map(String.init),
                   key.hasPrefix("params.") || key.hasPrefix("cursor."),
                   !live.contains(identifier) else { continue }

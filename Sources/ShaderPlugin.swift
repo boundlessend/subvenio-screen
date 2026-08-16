@@ -235,6 +235,9 @@ func pluginDigest(_ directory: URL) -> String? {
     return hasher.finalize().map { String(format: "%02x", $0) }.joined()
 }
 
+/// отпечаток переживает удаление пресета намеренно: по нему отличают папку, которую
+/// человек выбросил, от той, которая ещё ни разу не ставилась, и без него удалённый
+/// встроенный пресет возвращался бы на каждом запуске
 private func installedDigestKey(_ identifier: String) -> String {
     "bundled.\(identifier).digest"
 }

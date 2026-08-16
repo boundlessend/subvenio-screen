@@ -4,10 +4,12 @@ import Foundation
 /// её на каждое открытие меню, то есть читать и парсить десяток файлов синхронно
 /// на главном потоке ради клика по иконке
 final class PluginWatcher {
-    private let onChange: () -> Void
+    /// изоляция объявлена, а не подразумевается: очередь событий задана главной строкой
+    /// ниже, и без пометки колбэк звал бы @MainActor-код из ниоткуда - на Swift 6 это ошибка
+    private let onChange: @MainActor @Sendable () -> Void
     private var stream: FSEventStreamRef?
 
-    init(directory: URL, onChange: @escaping () -> Void) {
+    init(directory: URL, onChange: @escaping @MainActor @Sendable () -> Void) {
         self.onChange = onChange
 
         var context = FSEventStreamContext(
@@ -19,7 +21,10 @@ final class PluginWatcher {
         )
         let callback: FSEventStreamCallback = { _, info, _, _, _, _ in
             guard let info else { return }
-            Unmanaged<PluginWatcher>.fromOpaque(info).takeUnretainedValue().onChange()
+            // очередь потока задана главной, поэтому это утверждение, а не надежда
+            MainActor.assumeIsolated {
+                Unmanaged<PluginWatcher>.fromOpaque(info).takeUnretainedValue().onChange()
+            }
         }
 
         guard let stream = FSEventStreamCreate(
