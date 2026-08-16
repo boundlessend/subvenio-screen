@@ -137,9 +137,10 @@ final class FrameSink: @unchecked Sendable {
 /// бэкенд уровня 3: захват экрана в текстуру Metal без копирования на CPU.
 ///
 /// потоковый контракт, он же причина `@unchecked Sendable`: изменяемое состояние
-/// (`stream`) читается и пишется только на главном потоке, а с очереди кадров
-/// используется единственное неизменяемое поле `textureCache`. поэтому гонки
-/// между stop и колбэком нет, но доказать это компилятору нечем
+/// (`stream`) читается и пишется только на главном акторе, чем и объясняются
+/// пометки на start и stop, а с очереди кадров используется единственное
+/// неизменяемое поле `textureCache`. поэтому гонки между stop и колбэком нет,
+/// но доказать это компилятору нечем
 final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
     private let textureCache: CVMetalTextureCache
     /// зовётся с очереди захвата
@@ -166,7 +167,10 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
     }
 
     /// масштаб и частоту передаёт вызывающий: NSScreen читается только с главного потока,
-    /// а старт потока живёт вне его
+    /// а поднимать поток захвата отсюда всё равно нельзя.
+    /// изоляция здесь не украшение: без неё присваивание stream уезжало бы на пул
+    /// конкурентности, пока stop читает его с главного
+    @MainActor
     func start(
         displayID: CGDirectDisplayID,
         scale: CGFloat,
@@ -229,6 +233,7 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
         )
     }
 
+    @MainActor
     func stop() {
         guard let stream else { return }
         self.stream = nil
