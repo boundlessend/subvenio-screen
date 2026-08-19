@@ -43,6 +43,7 @@ xcodebuild -project SubvenioScreen.xcodeproj \
     CODE_SIGN_IDENTITY=- \
     DEVELOPMENT_TEAM= \
     PROVISIONING_PROFILE_SPECIFIER= \
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
     build
 
 APP="build/Build/Products/Release/Subvenio Screen.app"
@@ -54,6 +55,21 @@ fi
 # приложение не нотаризовано: на чужой машине Gatekeeper потребует ручного
 # подтверждения в Privacy & Security. это осознанное решение из PLAN.md
 codesign --verify --strict "$APP"
+
+# валидная подпись ещё не значит, что приложение запустится: Library Validation
+# из Hardened Runtime отвергала встроенный Pow.framework, и codesign об этом
+# молчал. поэтому запуск проверяется на самом деле, а не по подписи
+"$APP/Contents/MacOS/Subvenio Screen" &
+LAUNCHED=$!
+sleep 3
+if ! kill -0 "$LAUNCHED" 2>/dev/null; then
+    echo "собранное приложение не запускается, смотрите вывод выше" >&2
+    exit 1
+fi
+# TERM, а не KILL: обработчик сигнала возвращает таблицу гаммы на место
+kill -TERM "$LAUNCHED"
+wait "$LAUNCHED" 2>/dev/null || true
+echo "запуск проверен"
 
 mkdir -p dist
 rm -f "dist/Subvenio Screen $VERSION.dmg"

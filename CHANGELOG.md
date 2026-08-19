@@ -16,6 +16,11 @@ every release from 1.1.0 on ships as a disk image on the
   has none, so the permission has to be granted again after this update and
   after each one that follows. The nine presets that ask for nothing are
   unaffected.
+- **Library Validation is off, and the ad-hoc signature is why.** That part of
+  Hardened Runtime wants every embedded framework to carry the app's team id,
+  and with an ad-hoc signature nobody has one, so the animation framework was
+  refused and the app could not start at all. The rest of Hardened Runtime
+  stands, and so does the App Sandbox.
 
 ## 1.7.1
 
