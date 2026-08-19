@@ -4,6 +4,19 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 every release from 1.1.0 on ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
+## 1.7.2
+
+### Changed
+
+- **Released images are signed ad-hoc.** An Apple certificate carries the name
+  and the email address it was issued to, it rides inside the binary, and one
+  command reads it back out of any image ever shipped. The app itself is the
+  same. The cost lands on the eight presets that read the screen: macOS ties
+  the Screen Recording permission to a lasting identity, an ad-hoc signature
+  has none, so the permission has to be granted again after this update and
+  after each one that follows. The nine presets that ask for nothing are
+  unaffected.
+
 ## 1.7.1
 
 ### Fixed
