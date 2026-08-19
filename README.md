@@ -60,11 +60,11 @@ settings window previews on.
 
 1. Download the `.dmg` from the [Releases](../../releases/latest) page.
 2. Open it and drag **Subvenio Screen** into your **Applications** folder.
-3. The build is signed but **not notarized**, so Gatekeeper blocks it on the
-   first launch. Open it once this way: **right click** (or Control-click) the
-   app in Applications and choose **Open**, then confirm in the dialog. If macOS
-   still refuses, go to **System Settings → Privacy & Security**, scroll down
-   and click **Open Anyway**.
+3. The build carries an ad-hoc signature and is **not notarized**, so Gatekeeper
+   blocks it on the first launch. Open it once this way: **right click** (or
+   Control-click) the app in Applications and choose **Open**, then confirm in
+   the dialog. If macOS still refuses, go to **System Settings → Privacy &
+   Security**, scroll down and click **Open Anyway**.
 
 After the first launch macOS remembers the choice and opens the app normally.
 
@@ -78,6 +78,11 @@ xattr -dr com.apple.quarantine "/Applications/Subvenio Screen.app"
 The app checks the Releases page for a newer version - once a week unless you
 change it in settings - and tells you in its menu when one is out. Installing is
 still a manual step: a new version means a new disk image from Releases.
+
+An ad-hoc signature has no lasting identity behind it, and macOS ties the Screen
+Recording permission to exactly that. An update therefore reads as a different
+app: the eight presets that read the screen ask for the permission again after
+one. The nine that need nothing are unaffected.
 
 ## The presets
 
@@ -101,9 +106,9 @@ still a manual step: a new version means a new disk image from Releases.
 | 1-bit Dither | black and white with a Bayer pattern between them | reads the screen |
 | Game Boy | the four DMG shades and dithering between them | reads the screen |
 
-The eight presets that read the screen ask for the Screen Recording permission -
-and only the first time you turn one on by hand. The other nine work without any
-permission at all, and refusing leaves them fully usable.
+The eight presets that read the screen ask for the Screen Recording permission,
+and only when you turn one on by hand rather than on autostart. The other nine
+work without any permission at all, and refusing leaves them fully usable.
 
 Swiping between spaces drops every preset except the free four for about a
 second, until the new space settles. macOS assembles that animation in the

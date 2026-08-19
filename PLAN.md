@@ -176,6 +176,17 @@ white" with an explicit warning in the UI, never as the foundation.
    `create-dmg`, versioned by hand from 1.0.0 and tagged in git. No Sparkle: an
    update framework has to be maintained, signed and hosted, which is more work
    than downloading a new image once in a while.
+
+   **Releases are signed ad-hoc, and that is a decision about the author rather
+   than about Gatekeeper.** An Apple certificate carries the name and the email
+   address it was issued to, it rides inside the binary, and one command pulls
+   it back out of any shipped image. A Developer ID would drop the address and
+   keep the name, which is no help to a project published under a pseudonym.
+   The price falls on level 3: TCC binds the Screen Recording grant to a lasting
+   identity and an ad-hoc signature has none, so every update asks for the
+   permission again. Nine presets of the seventeen never ask for anything, and
+   Gatekeeper stops an unnotarised Developer ID build on its first launch much
+   the way it stops this one, so that half of the trade costs little.
 15. **Update check without an update framework.** One request to the GitHub
     releases API, a version comparison, and a menu entry - the app never
     downloads or installs anything, it opens the release page. The interval is a

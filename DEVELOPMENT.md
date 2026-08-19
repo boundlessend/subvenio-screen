@@ -36,6 +36,11 @@ CODE_SIGN_IDENTITY = <SHA-1 from security find-identity -v -p codesigning>
 DEVELOPMENT_TEAM = <your team id>
 ```
 
+`make release` ignores that file and signs ad-hoc whatever is in the keychain,
+because a certificate travels inside the binary with the name and the address it
+was issued to. The disk image is signed the same way, since `create-dmg` would
+otherwise pick the first identity it finds by itself.
+
 ## Layout
 
 ```

@@ -30,10 +30,19 @@ if ! command -v create-dmg >/dev/null; then
 fi
 
 xcodegen generate
+# подпись задана здесь, а не взята из Signing.xcconfig: локальный
+# Signing.local.xcconfig перекрыл бы её сертификатом этой машины, а сертификат
+# уезжает внутрь бинарника вместе с именем и адресом владельца. аргументы
+# командной строки сильнее xcconfig, поэтому выпуск всегда ad-hoc, чей бы
+# сертификат ни лежал в связке ключей
 xcodebuild -project SubvenioScreen.xcodeproj \
     -scheme SubvenioScreen \
     -configuration Release \
     -derivedDataPath build \
+    CODE_SIGN_STYLE=Manual \
+    CODE_SIGN_IDENTITY=- \
+    DEVELOPMENT_TEAM= \
+    PROVISIONING_PROFILE_SPECIFIER= \
     build
 
 APP="build/Build/Products/Release/Subvenio Screen.app"
@@ -48,7 +57,14 @@ codesign --verify --strict "$APP"
 
 mkdir -p dist
 rm -f "dist/Subvenio Screen $VERSION.dmg"
-create-dmg "$APP" dist
+# --no-code-sign, потому что сам create-dmg тут не годится: без флага он находит
+# в связке ключей первый подходящий сертификат и подписывает им образ, а с
+# --identity=- подписывает верно, но потом ищет в выводе codesign строку
+# Authority, которой у ad-hoc нет, и выходит с ошибкой на готовом образе
+create-dmg --no-code-sign "$APP" dist
+DMG="dist/Subvenio Screen $VERSION.dmg"
+codesign --sign - "$DMG"
+codesign --verify --strict "$DMG"
 
 echo "готово: dist/Subvenio Screen $VERSION.dmg"
 echo
