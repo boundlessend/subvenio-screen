@@ -313,23 +313,17 @@ the kind of answer an eye cannot give.
 
 ## Presets
 
-Seventeen presets ship, and the backlog that named them is empty. Each one was
-written as a real fragment function and rendered offline against the bundled
-preview picture before it got a folder, so nothing here was accepted on the
-strength of a description. The rendering level is the first thing to look at:
-it decides what the effect costs, whether it asks for anything, and which group
-of the menu it lands in.
+Seventeen presets ship. Each one was written as a real fragment function and
+rendered offline against the bundled preview picture before it got a folder, so
+nothing here was accepted on the strength of a description. The rendering level
+is the first thing to look at: it decides what the effect costs, whether it asks
+for anything, and which group of the menu it lands in. Which preset sits at
+which level is the table in [README.md](README.md#the-presets).
 
-Free, and covering the cursor and the menu bar: Invert, Sepia, Faded Photo,
-Moonlight. One drawn layer and no permission: Scanlines, Film Grain, VHS,
-Dust & Scratches, Projector. Reading the screen: Black and White, Phosphor
-Terminal, Aperture Grille, Halation, Chromatic Aberration, Halftone, 1-bit
-Dither, Game Boy.
-
-The last three quantise the screen to two shades or four, which makes small
-text hard to read. They are effects to look at rather than to work under, and
-the README says so rather than the menu: a preset that warns about itself every
-time it is opened is a preset nobody picks twice.
+Halftone, 1-bit Dither and Game Boy quantise the screen to two shades or four,
+which makes small text hard to read. They are effects to look at rather than to
+work under, and the README says so rather than the menu: a preset that warns
+about itself every time it is opened is a preset nobody picks twice.
 
 **An animated preset must not modulate the brightness of the whole screen at
 all.** Fast, that reads as flicker - the band the eye notices most, and the band

@@ -40,6 +40,7 @@ DEVELOPMENT_TEAM = <your team id>
 
 ```
 Sources/            Swift, one file per concern
+  main              entry point without a NIB
   AppDelegate       menu bar and window wiring
   MainMenu          the menu bar strip shown while the settings window is open
   SettingsWindow    the settings window: a tab per screen, SwiftUI
@@ -51,7 +52,11 @@ Sources/            Swift, one file per concern
   Renderer          Metal device, the draw call, the display link
   Gamma             level 1 backend
   Capture           level 3 backend
+  Displays          display identity and the list settings picks from
   Permissions       Screen Recording onboarding and alerts
+  Shortcuts         the global hotkey and its default combination
+  LaunchAtLogin     registration through SMAppService
+  Updates           the release check and its interval
   ShaderPlugin      manifest model, validation, loader and installer
   ShaderPipeline    uniform layout, shader prelude, runtime compilation
   PluginWatcher     FSEvents watch over the plugin folder
@@ -60,7 +65,7 @@ Sources/            Swift, one file per concern
 Tests/              pure transforms, preset installation, bundled shaders
 Resources/Shaders/  bundled presets
 assets/             images used by the README
-scripts/release.sh  Release build packaged into dist/
+scripts/            release packaging and the CI changelog check
 project.yml         XcodeGen project definition
 Signing.xcconfig    signing defaults, overridable locally
 ```

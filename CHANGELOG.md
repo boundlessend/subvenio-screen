@@ -1,7 +1,7 @@
 # Changelog
 
 Notable changes per release. Versions follow [SemVer](https://semver.org), and
-each one ships as a disk image on the
+every release from 1.1.0 on ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
 ## 1.7.1
