@@ -1,13 +1,10 @@
 import AppKit
 import KeyboardShortcuts
-import Pow
 import SwiftUI
+import UniformTypeIdentifiers
 
-/// формат пресета и список изменений живут в репозитории: держать их копию в окне
-/// значило бы поддерживать две редакции одного текста
-private let shaderFormatURL = URL(
-    string: "https://github.com/boundlessend/subvenio-screen/blob/main/DEVELOPMENT.md#writing-a-shader"
-)!
+/// список изменений живёт в репозитории: держать его копию в окне значило бы
+/// поддерживать две редакции одного текста
 private let changelogURL = URL(
     string: "https://github.com/boundlessend/subvenio-screen/blob/main/CHANGELOG.md"
 )!
@@ -100,11 +97,14 @@ struct EffectSettings: View {
     private var mainSection: some View {
         Section {
             Picker("Preset", selection: Binding(
-                get: { effects.selectedIdentifier ?? effects.plugins.first?.identifier ?? "" },
+                // умолчание при пустом выборе живёт в selectedPlugin и только там:
+                // второй запасной вариант расходился с ним и подсвечивал не тот пресет,
+                // который включится
+                get: { effects.selectedPlugin?.identifier ?? "" },
                 // анимация нужна самому переходу превью: без транзакции SwiftUI
                 // подменит картинку мгновенно
                 set: { identifier in
-                    withAnimation(.easeInOut(duration: 0.35)) {
+                    withAnimation(presetChange) {
                         effects.selectedIdentifier = identifier
                     }
                 }
@@ -129,6 +129,12 @@ struct EffectSettings: View {
                 get: { effects.isActive },
                 set: { $0 ? effects.enable() : effects.disable() }
             ))
+
+            // отказ включения виден только треугольником в меню-баре, а нажимали
+            // тумблер здесь: окно обязано назвать причину, по которой он вернулся назад
+            if let status = effects.status {
+                statusRow(status)
+            }
 
             if let plugin = effects.selectedPlugin {
                 // сначала что пресет делает, потом чего он стоит: имя вроде
@@ -177,11 +183,46 @@ struct EffectSettings: View {
                     }
                 }
             } else {
-                Text("The selected preset is no longer in the shaders folder. Pick another one.")
-                    .font(.callout)
-                    .foregroundStyle(.red)
+                // тот же текст, что показывает меню-бар: одно состояние, одна строка
+                // в каталоге, один перевод
+                Text(String(
+                    format: String(localized: "\"%@\" is no longer in the shaders folder. Pick another preset."),
+                    effects.selectedIdentifier ?? ""
+                ))
+                .font(.callout)
+                .foregroundStyle(.red)
             }
         }
+    }
+
+    /// беда, о которой контроллер уже сообщил меню-бару. кнопка ведёт туда,
+    /// где её чинят, как и в меню
+    @ViewBuilder
+    private func statusRow(_ status: EffectStatus) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(status.title)
+                .font(.callout)
+                .foregroundStyle(.red)
+            Text(status.message)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+            if status.recovery == .openShadersFolder {
+                Button("Open shaders folder") {
+                    NSWorkspace.shared.open(shadersDirectory())
+                }
+            }
+        }
+    }
+
+    /// анимация смены пресета и её же выключение: системная настройка «уменьшать
+    /// движение» касается окна ровно так же, как оверлея и превью
+    private var presetChange: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.35)
+    }
+
+    private var previewTransition: AnyTransition {
+        reduceMotion ? .identity : .opacity.combined(with: .scale(scale: 0.94))
     }
 
     /// превью идёт на образце и в своём размере, поэтому частота линий относительно
@@ -195,9 +236,8 @@ struct EffectSettings: View {
         )
         .frame(width: 240, height: 138)
         .id(plugin.identifier)
-        // смена пресета как смена кадра плёнки: по теме и заодно скрывает
-        // паузу на компиляцию нового шейдера
-        .transition(.movingParts.filmExposure)
+        // проявление кадра: заодно скрывает паузу на компиляцию нового шейдера
+        .transition(previewTransition)
         .accessibilityElement()
         .accessibilityLabel(String(
             format: String(localized: "Preview of \"%@\" on the bundled sample picture"),
@@ -210,7 +250,11 @@ struct EffectSettings: View {
     private func parameterControls(for plugin: ShaderPlugin) -> some View {
         let parameters = plugin.manifest.parameters ?? []
         if parameters.isEmpty {
-            Text("This preset has no parameters: level 1 is configured by the gamma section of its manifest.")
+            // про gamma-секцию говорим только уровню 1: у пресета уровня 2 или 3
+            // её не бывает, и объяснение уводило бы автора не туда
+            Text(plugin.manifest.level == .gammaLUT
+                ? String(localized: "This preset has no parameters: level 1 is configured by the gamma section of its manifest.")
+                : String(localized: "This preset has no adjustable parameters."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } else {
@@ -242,6 +286,11 @@ struct EffectSettings: View {
             Text(title)
                 .frame(width: 118, alignment: .leading)
                 .lineLimit(1)
+                // длинная подпись уезжает в многоточие, а прочитать её больше негде
+                .help(title)
+                // ту же строку несут ползунок и поле: без этого VoiceOver
+                // произносит название параметра трижды за один проход по строке
+                .accessibilityHidden(true)
             Slider(value: binding, in: Double(parameter.min)...Double(parameter.max))
                 // подпись рядом это отдельная вьюха, и VoiceOver её со ползунком
                 // не связывает: без этого он читает голое число
@@ -307,75 +356,6 @@ struct EffectSettings: View {
     }
 }
 
-// MARK: - пресеты
-
-/// коллекция пресетов целиком: папка, заготовка, возврат встроенных и то, что
-/// не загрузилось. на вкладке эффекта эти кнопки стояли рядом с настройкой одного
-/// пресета и читались как действия над ним
-struct PresetsSettings: View {
-    @ObservedObject var effects: EffectController
-    @State private var isConfirmingRestore = false
-
-    var body: some View {
-        Form {
-            Section {
-                Text("A preset is a folder with a manifest and a Metal shader. Save a file and the menu updates itself, with no restart.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 12) {
-                    Button("Open shaders folder") {
-                        NSWorkspace.shared.open(shadersDirectory())
-                    }
-                    Button("New preset from template") { newPreset() }
-                    Button("Restore bundled presets") {
-                        isConfirmingRestore = true
-                    }
-                    .confirmationDialog(
-                        "Restore the bundled presets?",
-                        isPresented: $isConfirmingRestore
-                    ) {
-                        Button("Restore", role: .destructive) { effects.restoreBundled() }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text("Your edits to the bundled presets will be lost. Presets you added yourself are left alone.")
-                    }
-                }
-
-                // «открыть папку» без описания формата означает, что человек обязан
-                // помнить манифест и сигнатуру фрагментной функции наизусть
-                Link("How to write a preset", destination: shaderFormatURL)
-                    .font(.callout)
-            }
-
-            if !effects.loadErrors.isEmpty {
-                Section("Failed to load") {
-                    ForEach(effects.loadErrors.indices, id: \.self) { index in
-                        Text(effects.loadErrors[index].localizedDescription)
-                            .font(.callout)
-                            .foregroundStyle(.red)
-                            .textSelection(.enabled)
-                    }
-                }
-            }
-        }
-    }
-
-    /// заготовка появляется в папке и сразу показывается в Finder: наблюдатель за папкой
-    /// добавит её в меню сам, а человеку остаётся открыть shader.metal
-    private func newPreset() {
-        do {
-            let created = try createPresetFromTemplate(in: shadersDirectory())
-            NSWorkspace.shared.activateFileViewerSelecting([created])
-        } catch {
-            showAlert(
-                title: String(localized: "Could not create the preset"),
-                message: error.localizedDescription
-            )
-        }
-    }
-}
-
 // MARK: - дисплей
 
 /// где лежит эффект и чего стоит его чтение экрана: один вопрос, поэтому одна вкладка
@@ -407,24 +387,27 @@ struct DisplaySettings: View {
                 Toggle("Only under the selected window", isOn: $effects.windowModeEnabled)
 
                 if effects.windowModeEnabled {
-                    if effects.selectedPlugin?.manifest.level == .gammaLUT {
+                    let isFullScreenOnly = effects.selectedPlugin?.manifest.level == .gammaLUT
+                    if isFullScreenOnly {
                         Text("Level 1 rewrites the table of the whole display and cannot be confined to a window, so this preset stays full-screen.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
-                    HStack {
-                        Picker("Window:", selection: $effects.trackedWindowID) {
-                            Text("none").tag(CGWindowID?.none)
-                            if let tracked = effects.trackedWindowID,
-                               !windows.contains(where: { $0.id == tracked }) {
-                                Text("Window is closed").tag(CGWindowID?.some(tracked))
-                            }
-                            ForEach(windows, id: \.id) { window in
-                                Text(window.title).tag(CGWindowID?.some(window.id))
-                            }
+                    Picker("Window:", selection: $effects.trackedWindowID) {
+                        Text("none").tag(CGWindowID?.none)
+                        if let tracked = effects.trackedWindowID,
+                           !windows.contains(where: { $0.id == tracked }) {
+                            Text("Window is closed").tag(CGWindowID?.some(tracked))
                         }
-                        Button("Refresh") { windows = availableWindows() }
+                        ForEach(windows, id: \.id) { window in
+                            Text(window.title).tag(CGWindowID?.some(window.id))
+                        }
                     }
+                    // выбор окна ничего не решает у пресета уровня 1: живой на вид
+                    // контрол, который эффект игнорирует, читается как поломка
+                    .disabled(isFullScreenOnly)
+                    // список обновляется сам: кнопка рядом повторяла то, что случится
+                    // не позже чем через две секунды
                     .onAppear { windows = availableWindows() }
                     .onReceive(windowRefresh) { _ in windows = availableWindows() }
                 }
@@ -450,19 +433,13 @@ struct DisplaySettings: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Picker("Capture size:", selection: Binding(
-                    get: { effects.captureQuality.scale },
-                    set: { effects.captureQuality = CaptureQuality(scale: $0, frameRateCap: effects.captureQuality.frameRateCap) }
-                )) {
+                Picker("Capture size:", selection: $effects.captureQuality.scale) {
                     Text("Full resolution").tag(1.0)
                     Text("Three quarters").tag(0.75)
                     Text("Half").tag(0.5)
                 }
 
-                Picker("Capture rate:", selection: Binding(
-                    get: { effects.captureQuality.frameRateCap },
-                    set: { effects.captureQuality = CaptureQuality(scale: effects.captureQuality.scale, frameRateCap: $0) }
-                )) {
+                Picker("Capture rate:", selection: $effects.captureQuality.frameRateCap) {
                     Text("Display refresh rate").tag(0)
                     Text("60 fps").tag(60)
                     Text("30 fps").tag(30)
@@ -482,23 +459,52 @@ struct GeneralSettings: View {
     @ObservedObject var updates: UpdateController
     /// регистрация автозапуска спрашивается у системы через XPC, поэтому не в значении
     /// по умолчанию: оно вычисляется на каждое пересоздание структуры вью
-    @State private var launchAtLogin = false
+    @State private var launchAtLogin: LaunchAtLoginState = .disabled
+    /// системная настройка меняется, пока окно открыто, поэтому не читается на месте
+    @State private var reduceMotion = false
 
     var body: some View {
         Form {
             Section {
                 // проверка конфликтов с системными комбинациями идёт из коробки
                 KeyboardShortcuts.Recorder("Toggle effect:", name: .toggleEffect)
+                KeyboardShortcuts.Recorder("Next preset:", name: .nextPreset)
 
                 Toggle("Launch at login", isOn: Binding(
-                    get: { launchAtLogin },
+                    get: { launchAtLogin != .disabled },
                     set: { setLaunchAtLoginSafely($0) }
                 ))
+
+                // регистрация прошла, но пункт выключен в системных настройках:
+                // без этой строки переключатель просто отскакивал бы назад
+                if launchAtLogin == .requiresApproval {
+                    Text("Registered, but switched off in Login Items. Turn it on there for the app to start with the system.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    Button("Open Login Items") {
+                        openLoginItemsSettings()
+                    }
+                }
             }
 
             updateSection
         }
-        .onAppear { launchAtLogin = isLaunchAtLoginEnabled() }
+        .onAppear {
+            launchAtLogin = launchAtLoginState()
+            reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
+        // состояние меняют в системных настройках, а сюда возвращаются потом:
+        // без перечитывания окно показывало бы то, чего давно нет
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification
+        )) { _ in
+            launchAtLogin = launchAtLoginState()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(
+            for: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification
+        )) { _ in
+            reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
     }
 
     /// обновления идут через страницу релизов GitHub: приложение только сообщает
@@ -517,8 +523,6 @@ struct GeneralSettings: View {
                     Task { await updates.checkNow() }
                 }
                 .disabled(updates.isChecking)
-                // проверка тихая и почти мгновенная: без отклика непонятно, случилась ли она
-                .changeEffect(.shine, value: updates.lastCheck)
 
                 if updates.isChecking {
                     ProgressView().controlSize(.small)
@@ -526,10 +530,10 @@ struct GeneralSettings: View {
                     Button(String(format: String(localized: "Download %@"), release.version)) {
                         NSWorkspace.shared.open(release.url)
                     }
-                    .transition(.movingParts.pop(Color.accentColor))
+                    .transition(reduceMotion ? .identity : .scale.combined(with: .opacity))
                 }
             }
-            .animation(.spring(duration: 0.4), value: updates.available?.version)
+            .animation(reduceMotion ? nil : .spring(duration: 0.4), value: updates.available?.version)
 
             if let failure = updates.lastFailure {
                 Text(failure.message)
@@ -561,6 +565,6 @@ struct GeneralSettings: View {
             )
         }
         // состояние берём у системы, а не у переключателя: регистрация могла не пройти
-        launchAtLogin = isLaunchAtLoginEnabled()
+        launchAtLogin = launchAtLoginState()
     }
 }
