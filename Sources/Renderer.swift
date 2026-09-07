@@ -37,7 +37,9 @@ final class OverlayRenderer {
         self.queue = queue
     }
 
-    /// подгоняет слой под размер в точках и рисует кадр
+    /// подгоняет слой под размер в точках и рисует кадр.
+    /// completion зовётся, когда GPU закончил работу с кадром: раньше отпускать
+    /// текстуру захвата нельзя, её поверхность вернётся в пул под следующий кадр
     func draw(
         in layer: CAMetalLayer,
         pipeline: MTLRenderPipelineState,
@@ -46,7 +48,8 @@ final class OverlayRenderer {
         time: Double,
         sourceRect: CGRect,
         parameters: [Float],
-        source: MTLTexture?
+        source: MTLTexture?,
+        completion: @escaping @Sendable () -> Void
     ) {
         // переприсваивание размера пересобирает пул drawable, поэтому только при изменении
         let drawableSize = CGSize(width: size.width * scale, height: size.height * scale)
@@ -64,7 +67,8 @@ final class OverlayRenderer {
                 sourceRect: sourceRect,
                 parameters: parameters
             ),
-            source: source
+            source: source,
+            completion: completion
         )
     }
 
@@ -72,29 +76,41 @@ final class OverlayRenderer {
         in layer: CAMetalLayer,
         pipeline: MTLRenderPipelineState,
         uniforms: Uniforms,
-        source: MTLTexture?
+        source: MTLTexture?,
+        completion: @escaping @Sendable () -> Void
     ) {
-        guard let drawable = layer.nextDrawable(),
-              let buffer = queue.makeCommandBuffer() else { return }
+        // autoreleasepool вокруг кадра: без него drawable живут до конца витка
+        // runloop, и на нескольких слоях сразу пул упирается сам в себя
+        autoreleasepool {
+            guard let drawable = layer.nextDrawable(),
+                  let buffer = queue.makeCommandBuffer() else {
+                completion()
+                return
+            }
 
-        let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = drawable.texture
-        pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].storeAction = .store
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+            let pass = MTLRenderPassDescriptor()
+            pass.colorAttachments[0].texture = drawable.texture
+            pass.colorAttachments[0].loadAction = .clear
+            pass.colorAttachments[0].storeAction = .store
+            pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
 
-        guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
-        encoder.setRenderPipelineState(pipeline)
-        var uniforms = uniforms
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 0)
-        if let source {
-            encoder.setFragmentTexture(source, index: 0)
+            guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else {
+                completion()
+                return
+            }
+            encoder.setRenderPipelineState(pipeline)
+            var uniforms = uniforms
+            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 0)
+            if let source {
+                encoder.setFragmentTexture(source, index: 0)
+            }
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            encoder.endEncoding()
+
+            buffer.addCompletedHandler { _ in completion() }
+            buffer.present(drawable)
+            buffer.commit()
         }
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        encoder.endEncoding()
-
-        buffer.present(drawable)
-        buffer.commit()
     }
 }
 

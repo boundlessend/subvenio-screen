@@ -92,6 +92,10 @@ final class WindowTracker {
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             self?.poll()
         }
+        // рамку двигают руками, и восемь миллисекунд опоздания незаметны, зато
+        // система получает право слить наши тики с чужими вместо шестидесяти
+        // отдельных пробуждений процессора в секунду
+        timer.tolerance = 1.0 / 120.0
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
         poll()

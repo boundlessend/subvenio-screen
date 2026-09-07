@@ -1,18 +1,22 @@
 import AppKit
 import CoreVideo
 import Metal
+import os
 import ScreenCaptureKit
 
 enum CaptureError: LocalizedError {
     case accessDenied
     case noDisplay
     case displayGone(id: CGDirectDisplayID)
+    case notRunning
     case textureCacheFailed(code: CVReturn)
 
     var errorDescription: String? {
         switch self {
         case .accessDenied:
             return String(localized: "no Screen Recording permission")
+        case .notRunning:
+            return String(localized: "the capture stream is not running")
         case .noDisplay:
             return String(localized: "ScreenCaptureKit returned no displays")
         case let .displayGone(id):
@@ -33,11 +37,9 @@ enum CaptureError: LocalizedError {
 /// на 120 Гц стоит дорого, а разница на ретро-эффекте почти не видна
 struct CaptureQuality: Equatable {
     /// доля нативного разрешения дисплея
-    let scale: Double
+    var scale: Double
     /// потолок кадров в секунду, 0 означает частоту дисплея
-    let frameRateCap: Int
-
-    static let native = CaptureQuality(scale: 1, frameRateCap: 0)
+    var frameRateCap: Int
 }
 
 /// разрешение спрашиваем лениво, только когда включают шейдер уровня 3
@@ -80,22 +82,11 @@ struct CaptureRequest {
     let plugin: ShaderPlugin
     let parameters: [Float]
     let displayID: CGDirectDisplayID
-    let frame: CGRect
+    /// рамка меняется на ходу вместе с окном под эффектом, остальное задаётся при старте
+    var frame: CGRect
     let showsCursor: Bool
     let quality: CaptureQuality
     let onStop: @MainActor @Sendable (Error) -> Void
-
-    func with(frame: CGRect) -> CaptureRequest {
-        CaptureRequest(
-            plugin: plugin,
-            parameters: parameters,
-            displayID: displayID,
-            frame: frame,
-            showsCursor: showsCursor,
-            quality: quality,
-            onStop: onStop
-        )
-    }
 }
 
 /// то в дисплее, что задаётся при старте потока и не меняется на лету
@@ -105,30 +96,43 @@ struct DisplayProfile: Equatable {
     let framesPerSecond: Int
 }
 
-/// собранный, но ещё не запущенный поток захвата вместе с параметрами дисплея
-struct CaptureSetup {
-    let controller: CaptureController
-    let profile: DisplayProfile
-}
-
 /// доставляет кадры с очереди захвата на главный поток.
 /// отдельный тип, потому что колбэк ScreenCaptureKit приходит вне главного потока,
 /// а вью изолировано главным актором
 final class FrameSink: @unchecked Sendable {
     private weak var view: OverlayView?
+    /// предыдущий кадр ещё не дорисован: следующий выбрасываем, а не ставим в очередь.
+    /// очередь главного потока не имеет предела и растёт вместе с задержкой, а каждый
+    /// кадр в ней держит поверхность из пула захвата, после чего ScreenCaptureKit
+    /// начинает ронять кадры сам
+    private let isBusy = OSAllocatedUnfairLock(initialState: false)
 
     init(view: OverlayView) {
         self.view = view
     }
 
     func deliver(_ frame: CapturedFrame) {
-        // без пропуска кадров. рисование одного треугольника дешевле
-        // кадра дисплея, начнёт отставать - появится флаг занятости.
-        // frame захватывается замыканием целиком: его буферы должны дожить до отрисовки.
+        let accepted = isBusy.withLock { busy in
+            guard !busy else { return false }
+            busy = true
+            return true
+        }
+        guard accepted else { return }
+
         // assumeIsolated вместо Task: очередь главного потока сохраняет порядок кадров
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
             MainActor.assumeIsolated {
-                self.view?.render(source: frame.texture)
+                guard let self else { return }
+                guard let view = self.view else {
+                    self.isBusy.withLock { $0 = false }
+                    return
+                }
+                view.render(source: frame.texture) {
+                    // кадр держится замыканием до сюда: пул захвата не должен
+                    // получить поверхность назад, пока GPU её читает
+                    _ = frame
+                    self.isBusy.withLock { $0 = false }
+                }
             }
         }
     }
@@ -149,7 +153,7 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
     private let onStop: @MainActor @Sendable (Error) -> Void
 
     private var stream: SCStream?
-    private let sampleQueue = DispatchQueue(label: "dev.senya.SubvenioScreen.capture")
+    private let sampleQueue = DispatchQueue(label: "dev.boundlessend.SubvenioScreen.capture")
 
     init(
         device: MTLDevice,
@@ -166,18 +170,71 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
         self.onStop = onStop
     }
 
-    /// масштаб и частоту передаёт вызывающий: NSScreen читается только с главного потока,
+    /// частоту передаёт вызывающий: NSScreen читается только с главного потока,
     /// а поднимать поток захвата отсюда всё равно нельзя.
     /// изоляция здесь не украшение: без неё присваивание stream уезжало бы на пул
     /// конкурентности, пока stop читает его с главного
     @MainActor
     func start(
         displayID: CGDirectDisplayID,
-        scale: CGFloat,
+        overlayWindowID: CGWindowID,
         framesPerSecond: Int,
         showsCursor: Bool,
         quality: CaptureQuality
     ) async throws {
+        let (filter, configuration) = try await makeStream(
+            displayID: displayID,
+            overlayWindowID: overlayWindowID,
+            framesPerSecond: framesPerSecond,
+            showsCursor: showsCursor,
+            quality: quality
+        )
+
+        let stream = SCStream(filter: filter, configuration: configuration, delegate: self)
+        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: sampleQueue)
+        try await stream.startCapture()
+        self.stream = stream
+
+        Log.capture.info(
+            "captured stream started: \(configuration.width)x\(configuration.height) at \(framesPerSecond) fps"
+        )
+    }
+
+    /// разрешение дисплея, частота или качество сменились на ходу. поток при этом
+    /// не роняется: перезапуск стоит нового согласования с WindowServer и даёт
+    /// видимый провал в несколько кадров
+    @MainActor
+    func update(
+        displayID: CGDirectDisplayID,
+        overlayWindowID: CGWindowID,
+        framesPerSecond: Int,
+        showsCursor: Bool,
+        quality: CaptureQuality
+    ) async throws {
+        guard let stream else { throw CaptureError.notRunning }
+        let (filter, configuration) = try await makeStream(
+            displayID: displayID,
+            overlayWindowID: overlayWindowID,
+            framesPerSecond: framesPerSecond,
+            showsCursor: showsCursor,
+            quality: quality
+        )
+        try await stream.updateContentFilter(filter)
+        try await stream.updateConfiguration(configuration)
+
+        Log.capture.info(
+            "capture stream updated: \(configuration.width)x\(configuration.height) at \(framesPerSecond) fps"
+        )
+    }
+
+    @MainActor
+    private func makeStream(
+        displayID: CGDirectDisplayID,
+        overlayWindowID: CGWindowID,
+        framesPerSecond: Int,
+        showsCursor: Bool,
+        quality: CaptureQuality
+    ) async throws -> (SCContentFilter, SCStreamConfiguration) {
         guard hasScreenRecordingAccess() else {
             throw CaptureError.accessDenied
         }
@@ -194,12 +251,13 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
             throw CaptureError.displayGone(id: displayID)
         }
 
-        // собственные окна вон из захвата, иначе кадр попадёт сам в себя и пойдёт петля.
-        // вместе с sharingType = .none у оверлейного окна это закрывает вопрос с двух сторон
-        let ownWindows = content.windows.filter { $0.owningApplication?.processID == getpid() }
-        let filter = SCContentFilter(display: display, excludingWindows: ownWindows)
+        // из кадра выпадает ровно оверлей, а не все окна приложения: по pid отсюда
+        // выпадало и окно настроек, и человек видел на его месте отфильтрованный
+        // рабочий стол. sharingType = .none страховкой больше не служит,
+        // с macOS 15.4 ScreenCaptureKit его не смотрит
+        let overlay = content.windows.filter { $0.windowID == overlayWindowID }
+        let filter = SCContentFilter(display: display, excludingWindows: overlay)
 
-        let pixelScale = scale * quality.scale
         var framesPerSecond = quality.frameRateCap > 0
             ? min(quality.frameRateCap, framesPerSecond)
             : framesPerSecond
@@ -210,8 +268,11 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
         }
 
         let configuration = SCStreamConfiguration()
-        configuration.width = Int(CGFloat(display.width) * pixelScale)
-        configuration.height = Int(CGFloat(display.height) * pixelScale)
+        // размер берётся у самого фильтра, а не считается из NSScreen: contentRect
+        // и pointPixelScale описывают то, что этот фильтр реально отдаст,
+        // и на нестандартных масштабах не расходятся с ним
+        configuration.width = Int(filter.contentRect.width * CGFloat(filter.pointPixelScale) * quality.scale)
+        configuration.height = Int(filter.contentRect.height * CGFloat(filter.pointPixelScale) * quality.scale)
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
         // кадр приходит в том же пространстве, в котором оверлей его потом покажет:
         // иначе на Display P3 шейдер получал одни числа, а рисовал по другим,
@@ -220,17 +281,12 @@ final class CaptureController: NSObject, SCStreamOutput, SCStreamDelegate, @unch
         // по умолчанию курсор рисует система поверх эффекта: попав внутрь кадра, он отстаёт
         // на всю задержку пайплайна и читается как лаг мыши
         configuration.showsCursor = showsCursor
-        configuration.queueDepth = 3
+        // пять, а не минимальные три: кадр уезжает на главный поток, и любая заминка
+        // там при трёх поверхностях сразу превращается в дропы
+        configuration.queueDepth = 5
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(framesPerSecond))
 
-        let stream = SCStream(filter: filter, configuration: configuration, delegate: self)
-        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: sampleQueue)
-        try await stream.startCapture()
-        self.stream = stream
-
-        Log.capture.info(
-            "captured stream started: \(configuration.width)x\(configuration.height) at \(framesPerSecond) fps"
-        )
+        return (filter, configuration)
     }
 
     @MainActor

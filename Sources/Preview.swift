@@ -42,19 +42,6 @@ func gammaPreviewImage(_ settings: GammaSettings, source: CGImage) -> CGImage? {
     return context.makeImage()
 }
 
-/// правка пресета на диске не меняет его идентификатор, поэтому пересобирать превью
-/// приходится по содержимому: иначе шейдер и гамма-таблица остались бы прежними
-private func previewSignature(_ plugin: ShaderPlugin) -> String {
-    switch plugin.kind {
-    case let .gamma(settings):
-        return "\(plugin.identifier)|\(settings.tint)|\(settings.gamma)|\(settings.invert)|\(settings.blackPoint)|\(settings.whitePoint)"
-    case let .overlay(source), let .capture(source):
-        // исходник целиком, а не его хеш: рядом лежит PipelineCache, который ключуется
-        // тем же самым, и два разных ответа на один вопрос расходятся незаметно
-        return "\(plugin.identifier)|\(source)"
-    }
-}
-
 /// показывает выбранный пресет на образце: уровень 1 пересчитанной картинкой,
 /// уровни 2 и 3 тем же шейдером и тем же слоем Metal, что и настоящий эффект
 final class PreviewView: NSView {
@@ -74,7 +61,6 @@ final class PreviewView: NSView {
     private var pipeline: MTLRenderPipelineState?
     private var sampleTexture: MTLTexture?
     private var plugin: ShaderPlugin?
-    private var signature = ""
     private var parameters: [Float] = []
     private var tickLink: CADisplayLink?
     private var startTime = CACurrentMediaTime()
@@ -130,12 +116,12 @@ final class PreviewView: NSView {
         fatalError("не используется")
     }
 
-    /// сменился пресет или значения слайдеров
+    /// сменился пресет или значения слайдеров.
+    /// равенство здесь по содержимому, а не по идентификатору: правку шейдера на диске
+    /// видно только так, и ShaderPlugin для того и Equatable
     func show(plugin: ShaderPlugin, parameters: [Float]) {
         self.parameters = parameters
-        let signature = previewSignature(plugin)
-        if signature != self.signature {
-            self.signature = signature
+        if plugin != self.plugin {
             self.plugin = plugin
             startTime = CACurrentMediaTime()
             rebuild(for: plugin)
@@ -223,7 +209,9 @@ final class PreviewView: NSView {
             time: CACurrentMediaTime() - startTime,
             sourceRect: CGRect(x: 0, y: 0, width: 1, height: 1),
             parameters: parameters,
-            source: plugin.manifest.level == .capture ? texture(for: renderer.device) : nil
+            source: plugin.manifest.level == .capture ? texture(for: renderer.device) : nil,
+            // образец живёт всё время работы окна: держать его до конца кадра незачем
+            completion: {}
         )
     }
 
