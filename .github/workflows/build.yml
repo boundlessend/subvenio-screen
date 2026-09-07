@@ -5,17 +5,54 @@ on:
     branches: [main]
   pull_request:
 
+# сборке хватает чтения: токен по умолчанию получает права репозитория целиком
+permissions:
+  contents: read
+
+# пуш вдогонку предыдущему отменяет его: четыре шага xcodebuild параллельно
+# ничего не проверяют дважды, а очередь занимают
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    runs-on: macos-15
+    # та же система, на которой собирается релиз: сборка со старым SDK не показывает,
+    # как приложение выглядит и ведёт себя на актуальной macOS
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
+      # версии закреплены, а не взяты из brew: со --strict любое новое правило
+      # свежего SwiftLint валит чужой pull request, и виноватым выглядит автор
+      # изменения, а не обновление формулы
       - name: Install XcodeGen and SwiftLint
-        run: brew install xcodegen swiftlint
+        env:
+          SWIFTLINT_VERSION: "0.65.1"
+          XCODEGEN_VERSION: "2.46.0"
+        run: |
+          mkdir -p "$RUNNER_TEMP/tools"
+          curl -fsSL -o swiftlint.zip \
+            "https://github.com/realm/SwiftLint/releases/download/$SWIFTLINT_VERSION/portable_swiftlint.zip"
+          unzip -q swiftlint.zip -d "$RUNNER_TEMP/tools/swiftlint"
+          curl -fsSL -o xcodegen.zip \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/$XCODEGEN_VERSION/xcodegen.zip"
+          unzip -q xcodegen.zip -d "$RUNNER_TEMP/tools"
+          echo "$RUNNER_TEMP/tools/swiftlint" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/tools/xcodegen/bin" >> "$GITHUB_PATH"
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('project.yml') }}
+          restore-keys: spm-${{ runner.os }}-
 
       - name: Generate project
-        run: xcodegen generate
+        run: |
+          swiftlint version
+          xcodegen --version
+          xcodegen generate
 
       # --strict: предупреждение линтера останавливает сборку, иначе оно копится
       - name: Lint
@@ -24,16 +61,7 @@ jobs:
       - name: Check changelog
         run: ./scripts/check-changelog.sh
 
-      # у раннера нет нашего сертификата, а подпись здесь и не проверяется
-      - name: Build
-        run: |
-          xcodebuild build \
-            -project SubvenioScreen.xcodeproj \
-            -scheme SubvenioScreen \
-            -configuration Debug \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
-
+      # отдельного шага сборки Debug нет: test собирает то же самое плюс тестовый бандл
       - name: Test
         run: |
           xcodebuild test \
@@ -43,13 +71,33 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
 
-      # оптимизация включена только здесь, и ловит она другое: релиз собирается
-      # с этой конфигурацией, а до сих пор её никто не проверял до самого выпуска
-      - name: Build Release
+      # ровно то, что уезжает пользователям: ad-hoc подпись, hardened runtime
+      # и entitlements. без этого шага сборка, которая не стартует из-за подписи,
+      # обнаруживалась только на релизе
+      - name: Build Release the way a release is built
         run: |
           xcodebuild build \
             -project SubvenioScreen.xcodeproj \
             -scheme SubvenioScreen \
             -configuration Release \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            PROVISIONING_PROFILE_SPECIFIER= \
+            CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO
+
+      # валидная подпись ещё не значит, что приложение запустится: Library Validation
+      # однажды отвергла встроенный фреймворк, и codesign об этом промолчал
+      - name: Verify signature and launch
+        run: |
+          APP="build/Build/Products/Release/Subvenio Screen.app"
+          codesign --verify --strict "$APP"
+          "$APP/Contents/MacOS/Subvenio Screen" &
+          LAUNCHED=$!
+          sleep 5
+          if ! kill -0 "$LAUNCHED" 2>/dev/null; then
+            echo "собранное приложение не запускается" >&2
+            exit 1
+          fi
+          kill -TERM "$LAUNCHED"

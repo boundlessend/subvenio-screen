@@ -1,0 +1,7 @@
+version: 2
+updates:
+  # действия в workflow закреплены по мажорной версии, и обновляет их только это
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

@@ -12,7 +12,9 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-if ! grep -q "^## $VERSION\$" CHANGELOG.md; then
+# точки экранируются: в шаблоне регулярного выражения они значат любой символ,
+# и проверка проходила бы на заголовке вида 1x7x2
+if ! grep -q "^## ${VERSION//./\\.}\$" CHANGELOG.md; then
     echo "CHANGELOG.md не содержит раздела '## $VERSION'" >&2
     exit 1
 fi

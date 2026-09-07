@@ -1,4 +1,4 @@
-.PHONY: project build run test release clean
+.PHONY: project build run test lint release clean
 
 PROJECT := SubvenioScreen.xcodeproj
 SCHEME := SubvenioScreen
@@ -14,6 +14,11 @@ run: build
 
 test: project
 	xcodebuild test -project $(PROJECT) -scheme $(SCHEME) -destination 'platform=macOS' -derivedDataPath build
+
+# та же строгость, что в CI: единственная проверка, которая реально валит сборку,
+# должна быть под рукой, а не вспоминаться наизусть
+lint:
+	swiftlint lint --strict
 
 release: project
 	./scripts/release.sh
