@@ -17,8 +17,10 @@ fragment float4 overlay_fragment(VertexOut in [[stage_in]],
     }
     scratch = saturate(scratch) * scratchStrength;
 
-    // пылинки: редкие тёмные крупинки по кадру, порог отбирает примерно одну на тысячу
-    float speck = overlay_hash3(float3(floor(in.position.xy / 2.0), frame));
+    // пылинки: редкие тёмные крупинки по кадру, порог отбирает примерно одну на тысячу.
+    // размер крупинки в точках, а не в пикселях: иначе на Retina их вчетверо больше
+    // на ту же площадь экрана, чем на обычном мониторе
+    float speck = overlay_hash3(float3(floor(in.position.xy / (2.0 * u.scale)), frame));
     float dust = step(0.9992, speck) * dustStrength;
 
     // царапина светлая и идёт через premultiplied rgb, пыль тёмная и только через alpha

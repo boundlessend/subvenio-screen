@@ -75,6 +75,26 @@ inline float2 overlay_source_uv(float2 uv, constant Uniforms &u) {
     return u.sourceOrigin + uv * u.sourceSize;
 }
 
+// смещение в пикселях, переведённое в координаты кадра захвата. считать смещение
+// прямо в uv нельзя: доли по осям неравны, и круг превращается в эллипс тем сильнее,
+// чем шире экран, а на мониторе другой плотности тот же шаг покрывает другое число точек
+inline float2 overlay_source_offset(float2 pixels, constant Uniforms &u) {
+    return pixels / u.resolution * u.sourceSize;
+}
+
+// упорядоченная матрица Байера 4x4: порог зависит от места в ячейке, поэтому
+// полутон выходит узором, а не полосами
+inline float overlay_bayer4(uint2 cell) {
+    constexpr float table[16] = {
+        0.0625, 0.5625, 0.1875, 0.6875,
+        0.8125, 0.3125, 0.9375, 0.4375,
+        0.2500, 0.7500, 0.1250, 0.6250,
+        1.0000, 0.5000, 0.8750, 0.3750
+    };
+    uint2 index = cell & 3u;
+    return table[index.y * 4u + index.x];
+}
+
 """
 
 /// параметры манифеста становятся именованными макросами: в шейдере пишут `scanlineStrength`,

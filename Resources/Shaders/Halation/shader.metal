@@ -7,12 +7,15 @@ fragment float4 overlay_fragment(VertexOut in [[stage_in]],
     float3 base = source.sample(overlay_sampler, uv).rgb;
 
     // двенадцать отсчётов по кольцу вместо честного размытия: разница на глаз
-    // не видна, а проходов по кадру остаётся один
+    // не видна, а проходов по кадру остаётся один.
+    // радиус задан в точках и переводится в кадр захвата: в долях кадра кольцо
+    // выходило овалом на широком экране, а на мониторе другой плотности ореол
+    // менял размер вместе с числом пикселей
     float3 glow = float3(0.0);
     for (int i = 0; i < 12; i++) {
         float angle = float(i) * 0.5236;
-        float radius = 0.008 + 0.014 * float(i % 3);
-        float2 offset = float2(cos(angle), sin(angle)) * radius;
+        float radius = (14.0 + 24.0 * float(i % 3)) * u.scale;
+        float2 offset = overlay_source_offset(float2(cos(angle), sin(angle)) * radius, u);
         float3 sampled = source.sample(overlay_sampler, uv + offset).rgb;
         glow += max(sampled - threshold, 0.0);
     }

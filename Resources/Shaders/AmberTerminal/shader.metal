@@ -7,10 +7,13 @@ fragment float4 overlay_fragment(VertexOut in [[stage_in]],
     float3 color = source.sample(overlay_sampler, uv).rgb;
     float luma = dot(color, float3(0.299, 0.587, 0.114));
 
-    // светящееся растекается по вертикали, как разгорается точка на люминофоре
-    float up = dot(source.sample(overlay_sampler, uv + float2(0.0, -0.004)).rgb,
+    // светящееся растекается по вертикали, как разгорается точка на люминофоре.
+    // шаг задан в точках: в долях кадра он растягивался вместе с высотой экрана,
+    // и на 4K свечение выходило вдвое шире, чем на 1080p
+    float2 spread = overlay_source_offset(float2(0.0, 4.5 * u.scale), u);
+    float up = dot(source.sample(overlay_sampler, uv - spread).rgb,
                    float3(0.299, 0.587, 0.114));
-    float down = dot(source.sample(overlay_sampler, uv + float2(0.0, 0.004)).rgb,
+    float down = dot(source.sample(overlay_sampler, uv + spread).rgb,
                      float3(0.299, 0.587, 0.114));
     luma = saturate(luma + (up + down) * 0.5 * glow);
 
