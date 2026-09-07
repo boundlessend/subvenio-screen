@@ -4,6 +4,109 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 every release from 1.1.0 on ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
+## 2.0.0
+
+### Changed
+
+- **The bundle identifier is now `dev.boundlessend.SubvenioScreen`.** The old one
+  carried a second pseudonym into a project published under one name. macOS keys
+  the sandbox container, the Screen Recording grant, the settings and the launch
+  item to that identifier, so this version starts as a fresh install: settings
+  are back at their defaults, the permission has to be granted again, and presets
+  you wrote yourself stay behind in the old container. Copy them across before
+  deleting it:
+
+  ```sh
+  open ~/Library/Containers/dev.senya.SubvenioScreen/Data/Library/Application\ Support/SubvenioScreen/Shaders
+  ```
+
+- **Pow is gone, and Library Validation is back on.** The animation framework
+  bought three transitions in the settings window, and it cost the part of the
+  Hardened Runtime that stops a substituted library from being loaded into a
+  process holding Screen Recording. The transitions are plain SwiftUI now, the
+  entitlement that disabled that check is removed, and the app is 1.6 MB smaller.
+- **A second hotkey steps through the presets.** Unassigned by default; record it
+  in settings next to the toggle.
+- **A preset installs by dropping its folder on the settings window.** The
+  shaders folder lives inside the sandbox container, where Finder does not go on
+  its own.
+- **Errors answer where they were caused.** The settings window shows what the
+  menu bar shows, so a toggle that springs back now says why; restoring the
+  bundled presets reports its result next to the button instead of in the menu
+  bar icon.
+- **The window settles for what it can actually do.** With a level 1 preset
+  selected, the window picker is disabled rather than merely explained.
+
+### Fixed
+
+- **The settings window went invisible under a level 3 effect.** Capture excluded
+  every window of the app instead of only the overlay, so the settings window was
+  cut out of the frame that the opaque overlay then drew over it. It stayed
+  clickable the whole time, which made it worse.
+- **Adding a slider to a preset that was being tuned crashed the app.** Values
+  held back for the next write were reused without checking that the preset still
+  has that many parameters.
+- **An effect no longer went missing when its display came back.** Starting with
+  the display unplugged left the app waiting for nothing; a level 3 stream that
+  died with the monitor did the same.
+- **Window mode read the wrong screen.** The effect took its display from the
+  picker and the frame from the window, and dragging that window to another
+  monitor left the shader sampling the edge of the first one. The display now
+  follows the window.
+- **A preset folder without a manifest disappeared silently.** That is what an
+  archive unpacked one level too deep looks like, and the app said nothing about
+  it. It is listed with the reason now.
+- **Deleting a preset while its slider was moving brought its settings back.**
+  The pending write did not know the preset was gone.
+- **Updating a bundled preset could leave you with neither version.** The old
+  folder was deleted before the new one was copied; the replacement is atomic now.
+- **A preset with a subfolder inside it stopped being updated, quietly.** Its
+  fingerprint could not be computed, and the empty result erased the recorded one
+  instead of leaving it alone.
+- **Launch at login could be on and look off.** The state where macOS has the
+  registration but the user switched it off in Login Items is now named, with a
+  button that leads there.
+- **The gamma table is reapplied after the screen wakes**, not only after the
+  whole system does.
+- **"Permission not granted" appeared over the still-open system dialog.** The
+  system call reports the state at that moment, not the person's answer.
+- **The About panel kept its menu bar.** Closing the settings window used to send
+  the app back to the menu bar even with the panel still open, leaving it without
+  ⌘W or ⌘Tab.
+- **Preset and preview agreed on which preset is selected** when nothing had been
+  chosen yet: the picker fell back to the first preset by name, the effect to the
+  first free one.
+- **VoiceOver reads a slider row once**, not three times.
+- **Reduce Motion reaches the settings window.** The overlay and the preview
+  already respected it; the window animated regardless.
+- **The Russian interface says "дисплей" everywhere**, instead of switching to
+  "монитор" in the one place where the display is picked.
+
+### Performance
+
+- **Frames are dropped instead of queued.** A capture frame now waits for the
+  previous one to be drawn; the unbounded main-thread queue held IOSurfaces from
+  the capture pool and grew latency along with it.
+- **A capture frame is released when the GPU is done with it**, not when the draw
+  call returns.
+- **The capture stream is reconfigured instead of restarted** when the resolution,
+  the frame rate or the quality changes: no visible gap, no renegotiation with
+  the window server.
+- **Queue depth is five and the overlay keeps two drawables**, which is the pair
+  Apple recommends for a frame that crosses to the main thread and a layer that
+  has to match what is under it.
+- **The window tracker lets the system coalesce its timer.**
+
+### Shaders
+
+- **Film Grain and Dust & Scratches measure in points, not pixels.** On a Retina
+  display the grain was half the intended size and the dust four times as dense.
+- **Halation and Phosphor Terminal spread evenly.** Their offsets were fractions
+  of the frame, so the halo was an ellipse on a wide screen and grew with pixel
+  density.
+- **Chromatic Aberration centres on the effect**, not on the middle of the
+  display, which is what it did in window mode.
+
 ## 1.7.2
 
 ### Changed
