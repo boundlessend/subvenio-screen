@@ -89,6 +89,8 @@ private func editMenu() -> NSMenuItem {
     return item
 }
 
+/// без Minimize: единственное окно приложения создаётся без .miniaturizable,
+/// и пункт стоял бы погашенным всегда
 private func windowMenu() -> NSMenuItem {
     let (item, menu) = submenu(String(localized: "Window"))
 
@@ -96,11 +98,6 @@ private func windowMenu() -> NSMenuItem {
         withTitle: String(localized: "Close"),
         action: #selector(NSWindow.performClose(_:)),
         keyEquivalent: "w"
-    )
-    menu.addItem(
-        withTitle: String(localized: "Minimize"),
-        action: #selector(NSWindow.performMiniaturize(_:)),
-        keyEquivalent: "m"
     )
     return item
 }

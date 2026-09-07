@@ -67,6 +67,17 @@
         }
       }
     },
+    "%@: a preset with this folder name is already installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: пресет с такой папкой уже установлен"
+          }
+        }
+      }
+    },
     "%@: level 1 needs a gamma section in the manifest": {
       "extractionState": "manual",
       "localizations": {
@@ -155,6 +166,17 @@
         }
       }
     },
+    "%@: this folder holds no manifest.json. An archive often unpacks one level deeper than it looks.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: в этой папке нет manifest.json. Архив часто распаковывается на уровень глубже, чем кажется."
+          }
+        }
+      }
+    },
     "%@: tint must hold 3 values, not %lld": {
       "extractionState": "manual",
       "localizations": {
@@ -199,13 +221,13 @@
         }
       }
     },
-    "A preset is a folder with a manifest and a Metal shader. Save a file and the menu updates itself, with no restart.": {
+    "A preset is a folder with a manifest and a Metal shader. Drop one on this window, or save a file in the folder: the menu updates itself, with no restart.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Пресет это папка с манифестом и шейдером Metal. Сохраните файл, и меню обновится само, без перезапуска."
+            "value": "Пресет это папка с манифестом и шейдером Metal. Бросьте её на это окно или сохраните файл в папке: меню обновится само, без перезапуска."
           }
         }
       }
@@ -239,6 +261,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "О Subvenio Screen"
+          }
+        }
+      }
+    },
+    "Added \"%@\".": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавлен «%@»."
           }
         }
       }
@@ -375,13 +408,13 @@
         }
       }
     },
-    "Could not create the preset": {
+    "Created \"%@\" and showed it in Finder.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось создать пресет"
+            "value": "Создан «%@», он показан в Finder."
           }
         }
       }
@@ -705,6 +738,17 @@
         }
       }
     },
+    "If you just granted it in the system dialog, turn the effect on again.\n\nIf the dialog did not appear, open Privacy & Security → Screen Recording and enable Subvenio Screen there.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Если вы только что выдали его в системном окне, включите эффект снова.\n\nЕсли окна не было, откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите там Subvenio Screen."
+          }
+        }
+      }
+    },
     "Its icon is at the top right of the screen. Click it to turn the effect on and off, right click it for the preset list and the settings.": {
       "extractionState": "manual",
       "localizations": {
@@ -782,17 +826,6 @@
         }
       }
     },
-    "Minimize": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Убрать в Dock"
-          }
-        }
-      }
-    },
     "Never": {
       "extractionState": "manual",
       "localizations": {
@@ -811,6 +844,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Новый пресет из заготовки"
+          }
+        }
+      }
+    },
+    "Next preset:": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующий пресет:"
           }
         }
       }
@@ -903,13 +947,13 @@
         }
       }
     },
-    "Open Privacy & Security → Screen Recording and enable Subvenio Screen.": {
+    "Open Login Items": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Откройте «Конфиденциальность и безопасность» → «Запись экрана» и включите Subvenio Screen."
+            "value": "Открыть «Объекты входа»"
           }
         }
       }
@@ -947,13 +991,13 @@
         }
       }
     },
-    "Permission not granted": {
+    "Permission not granted yet": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Разрешение не выдано"
+            "value": "Разрешение пока не выдано"
           }
         }
       }
@@ -998,17 +1042,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пресеты"
-          }
-        }
-      }
-    },
-    "Presets could not be restored": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Не удалось вернуть пресеты"
           }
         }
       }
@@ -1068,13 +1101,13 @@
         }
       }
     },
-    "Refresh": {
+    "Registered, but switched off in Login Items. Turn it on there for the app to start with the system.": {
       "extractionState": "manual",
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновить"
+            "value": "Зарегистрировано, но выключено в «Объектах входа». Включите его там, чтобы приложение запускалось вместе с системой."
           }
         }
       }
@@ -1244,6 +1277,17 @@
         }
       }
     },
+    "The bundled presets are back the way they came.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встроенные пресеты вернулись в исходный вид."
+          }
+        }
+      }
+    },
     "The cursor moves inside the captured frame and lags by the whole pipeline delay, which reads as a laggy mouse.": {
       "extractionState": "manual",
       "localizations": {
@@ -1299,17 +1343,6 @@
         }
       }
     },
-    "The selected preset is no longer in the shaders folder. Pick another one.": {
-      "extractionState": "manual",
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Выбранного пресета больше нет в папке шейдеров. Выберите другой."
-          }
-        }
-      }
-    },
     "The selected window is closed or minimised.": {
       "extractionState": "manual",
       "localizations": {
@@ -1361,6 +1394,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Этот пресет не компилируется: %@"
+          }
+        }
+      }
+    },
+    "This preset has no adjustable parameters.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У этого пресета нет настраиваемых параметров."
           }
         }
       }
@@ -1614,6 +1658,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "старое стекло поверх нового экрана"
+          }
+        }
+      }
+    },
+    "the capture stream is not running": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "поток захвата не запущен"
           }
         }
       }
