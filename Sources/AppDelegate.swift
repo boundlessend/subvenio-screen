@@ -6,12 +6,6 @@ import KeyboardShortcuts
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let didShowWelcomeKey = "didShowWelcome"
-    /// вторая копия просит первую показаться и выходит. без этого повторный запуск
-    /// из Finder не делал ничего видимого, а это единственный путь к приложению,
-    /// когда иконка в меню-баре уехала в переполнение и хоткей забыт
-    private static let showSettingsNotification = Notification.Name(
-        "dev.senya.SubvenioScreen.showSettings"
-    )
 
     private var statusItem: NSStatusItem?
     private let effects = EffectController()
@@ -21,11 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var updateTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard !anotherCopyIsRunning() else {
-            NSApp.terminate(nil)
-            return
-        }
-
         // строка меню нужна только при открытом окне настроек, но собирается сразу:
         // в accessory-режиме её всё равно не видно
         NSApp.mainMenu = makeMainMenu(
@@ -36,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(showSettingsFromSecondLaunch),
-            name: Self.showSettingsNotification,
+            name: showSettingsNotification,
             object: nil
         )
 
@@ -53,6 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         KeyboardShortcuts.onKeyDown(for: .toggleEffect) { [weak self] in
             self?.toggleEffect()
         }
+        KeyboardShortcuts.onKeyDown(for: .nextPreset) { [weak self] in
+            self?.selectNextPreset()
+        }
 
         effects.objectWillChange
             .receive(on: RunLoop.main)
@@ -63,25 +55,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateStatusIcon()
         showWelcomeOnFirstLaunch()
         scheduleUpdateChecks()
-    }
-
-    /// вторая копия это вторая иконка в меню-баре и вторая гамма-таблица на том же
-    /// дисплее: выключение одной оставило бы экран перекрашенным второй
-    private func anotherCopyIsRunning() -> Bool {
-        guard let identifier = Bundle.main.bundleIdentifier else { return false }
-        let others = NSRunningApplication
-            .runningApplications(withBundleIdentifier: identifier)
-            .filter { $0 != .current }
-        guard !others.isEmpty else { return false }
-        Log.effects.info("another copy is already running, asking it to show settings")
-        // sandbox пропускает распределённое уведомление только с пустым object
-        DistributedNotificationCenter.default().postNotificationName(
-            Self.showSettingsNotification,
-            object: nil,
-            userInfo: nil,
-            deliverImmediately: true
-        )
-        return true
     }
 
     /// система восстанавливает окна между запусками, и без явного ответа пишет
@@ -212,6 +185,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleEffect() {
         effects.toggle()
+        updateStatusIcon()
+    }
+
+    /// следующий пресет по списку, по кругу. работающий эффект подменит себя сам,
+    /// выключенный останется выключенным, как и при выборе пресета из меню
+    private func selectNextPreset() {
+        effects.selectNextPlugin()
         updateStatusIcon()
     }
 
