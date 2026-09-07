@@ -142,8 +142,19 @@ func fetchLatestRelease(etag: String?) async throws -> ReleaseCheck {
     guard http.statusCode == 200 else {
         throw UpdateError.httpStatus(http.statusCode)
     }
-    guard let payload = try? JSONDecoder().decode(ReleasePayload.self, from: data),
-          let url = URL(string: payload.htmlURL) else {
+    let payload: ReleasePayload
+    do {
+        payload = try JSONDecoder().decode(ReleasePayload.self, from: data)
+    } catch {
+        // текст для человека остаётся общим, а разбираться в чужом JSON придётся
+        // по логу: без него не видно ни поля, ни типа, на которых всё встало
+        Log.updates.error("release payload did not decode: \(error.localizedDescription, privacy: .public)")
+        throw UpdateError.malformedPayload
+    }
+    // схема ссылки проверяется отдельно: адрес приходит с чужой стороны,
+    // а открывает его NSWorkspace, которому всё равно, что за схема
+    guard let url = URL(string: payload.htmlURL), url.scheme == "https" else {
+        Log.updates.error("release url is not https: \(payload.htmlURL, privacy: .public)")
         throw UpdateError.malformedPayload
     }
     // тег в интерфейсе показывать незачем: "v1.2.0" читается как опечатка рядом с "1.1.0"

@@ -48,13 +48,13 @@ final class GammaController {
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
-        // после сна и смены цветового профиля система сбрасывает таблицу на свою
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(reapply),
-            name: NSWorkspace.didWakeNotification,
-            object: nil
-        )
+        // после сна и смены цветового профиля система сбрасывает таблицу на свою.
+        // погасший по таймауту экран это отдельное событие от сна всей системы,
+        // и на ноутбуке оно случается куда чаще
+        let workspace = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
+            workspace.addObserver(self, selector: #selector(reapply), name: name, object: nil)
+        }
         installRestoreOnSignals()
     }
 

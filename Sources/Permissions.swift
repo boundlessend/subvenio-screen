@@ -46,11 +46,19 @@ func ensureScreenRecordingAccess(for presetName: String) -> Bool {
         return true
     }
 
+    // CGRequestScreenCaptureAccess отвечает состоянием на сейчас, а не ответом
+    // человека: системное окно в этот момент ещё открыто. поэтому здесь не отказ,
+    // а «пока не выдано», и текст говорит, что делать в обоих случаях.
     // системный диалог показывается один раз за установку, дальше только руками
     activateApp()
     let denied = NSAlert()
-    denied.messageText = String(localized: "Permission not granted")
-    denied.informativeText = String(localized: "Open Privacy & Security → Screen Recording and enable Subvenio Screen.")
+    denied.messageText = String(localized: "Permission not granted yet")
+    denied.informativeText = String(localized: """
+    If you just granted it in the system dialog, turn the effect on again.
+
+    If the dialog did not appear, open Privacy & Security → Screen Recording and \
+    enable Subvenio Screen there.
+    """)
     denied.addButton(withTitle: String(localized: "Open Settings"))
     denied.addButton(withTitle: String(localized: "Cancel"))
     if denied.runModal() == .alertFirstButtonReturn {

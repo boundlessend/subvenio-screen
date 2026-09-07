@@ -64,8 +64,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         window?.makeKeyAndOrderFront(nil)
     }
 
-    /// окно закрылось: приложение возвращается в меню-бар и уходит из ⌘Tab
+    /// окно закрылось: приложение возвращается в меню-бар и уходит из ⌘Tab.
+    /// но не раньше, чем закроется последнее: панель «О программе» переживает
+    /// закрытие настроек, и уход в accessory забрал бы у неё строку меню и ⌘Tab,
+    /// оставив закрывать её только мышью
     func windowWillClose(_ notification: Notification) {
+        let closing = notification.object as? NSWindow
+        let others = NSApp.windows.contains {
+            $0 !== closing && $0.isVisible && $0.canBecomeKey
+        }
+        guard !others else { return }
         NSApp.setActivationPolicy(.accessory)
     }
 

@@ -8,14 +8,17 @@ final class PluginSettings {
     private var pending: [String: [Float]] = [:]
     private var flushTimer: Timer?
 
-    /// пользовательские значения, иначе умолчания манифеста
+    /// пользовательские значения, иначе умолчания манифеста.
+    /// длина сверяется и у отложенных значений тоже: манифест правят на диске,
+    /// и набор ползунков у пресета меняется под уже накопленной пачкой
     func parameters(for plugin: ShaderPlugin) -> [Float] {
-        if let pending = pending[plugin.identifier] {
+        let defaults = plugin.defaultParameters
+        if let pending = pending[plugin.identifier], pending.count == defaults.count {
             return pending
         }
         let stored = UserDefaults.standard.array(forKey: parametersKey(plugin.identifier)) as? [Double]
-        guard let stored, stored.count == plugin.defaultParameters.count else {
-            return plugin.defaultParameters
+        guard let stored, stored.count == defaults.count else {
+            return defaults
         }
         return stored.map(Float.init)
     }
@@ -58,6 +61,10 @@ final class PluginSettings {
     /// домен берётся свой, а не dictionaryRepresentation: тот отдаёт ещё и системные
     /// ключи вместе с чужими доменами, а искать среди них нечего
     func forget(outside live: Set<String>) {
+        // сперва отложенная пачка: без этого ближайший флаш возвращал бы в UserDefaults
+        // ключи пресета, папку которого только что удалили
+        pending = pending.filter { live.contains($0.key) }
+
         let defaults = UserDefaults.standard
         let domain = Bundle.main.bundleIdentifier.flatMap {
             defaults.persistentDomain(forName: $0)

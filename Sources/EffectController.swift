@@ -15,6 +15,13 @@ struct EffectStatus {
     let recovery: EffectRecovery?
 }
 
+/// куда ложится эффект: рамка и экран, которому она принадлежит. на весь дисплей
+/// это выбранный монитор, в оконном режиме тот, на котором сейчас лежит окно
+struct EffectTarget {
+    let frame: CGRect
+    let displayID: CGDirectDisplayID
+}
+
 /// состояние эффекта: какой пресет выбран, включён ли он и с какими параметрами.
 /// бэкенды выбираются по уровню плагина, активным остаётся ровно один.
 /// живёт на главном акторе: трогает окна, таймеры и публикует состояние в UI
@@ -115,6 +122,9 @@ final class EffectController: ObservableObject {
     private var installError: PluginError?
     /// эффект сняли, потому что дисплей отключили: его вернут, когда монитор придёт назад
     private var waitingForDisplay = false
+    /// экран, на котором эффект лежит сейчас. в оконном режиме он задаётся окном,
+    /// а не выбором в настройках, и по нему видно, что окно уехало на другой монитор
+    private var activeDisplayID: CGDirectDisplayID = CGMainDisplayID()
 
     init() {
         let defaults = UserDefaults.standard
@@ -154,6 +164,20 @@ final class EffectController: ObservableObject {
 
     func clearStatus() {
         status = nil
+    }
+
+    /// следующий по списку, по кругу. список тот же, что в меню и в настройках,
+    /// поэтому порядок перебора совпадает с тем, что человек там видит
+    func selectNextPlugin() {
+        guard !plugins.isEmpty else {
+            reportMissingPlugin()
+            return
+        }
+        let current = selectedPlugin.flatMap { plugin in
+            plugins.firstIndex { $0.identifier == plugin.identifier }
+        }
+        let next = current.map { ($0 + 1) % plugins.count } ?? 0
+        selectedIdentifier = plugins[next].identifier
     }
 
     // MARK: - плагины и параметры
@@ -197,17 +221,18 @@ final class EffectController: ObservableObject {
     }
 
     /// встроенные пресеты обратно в исходный вид: единственный путь починить тот,
-    /// который правили руками и сломали
-    func restoreBundled() {
-        do {
-            try restoreBundledPlugins(into: shadersDirectory())
-            reload()
-        } catch {
-            report(
-                title: String(localized: "Presets could not be restored"),
-                message: error.localizedDescription
-            )
-        }
+    /// который правили руками и сломали.
+    /// ошибка уходит наверх, а не в меню-бар: кнопку нажимают в окне настроек,
+    /// и ответ на нажатие человек ждёт там же
+    func restoreBundled() throws {
+        try restoreBundledPlugins(into: shadersDirectory())
+        reload()
+    }
+
+    /// чужой пресет, брошенный на окно настроек
+    func installDropped(_ folder: URL) throws {
+        try installDroppedPlugin(folder, into: shadersDirectory())
+        reload()
     }
 
     func parameters(for plugin: ShaderPlugin) -> [Float] {
@@ -295,30 +320,31 @@ final class EffectController: ObservableObject {
         // свой флаг он больше не сбросит, потому что уедет по чужому поколению
         isStarting = false
         tracker = nil
-        guard let frame = targetFrame(for: plugin) else {
+        guard let target = target(for: plugin) else {
             disable()
             return
         }
+        activeDisplayID = target.displayID
 
         do {
             switch plugin.kind {
             case let .gamma(settings):
                 overlay.hide()
-                try gamma.activate(settings, displayID: selectedDisplayID)
+                try gamma.activate(settings, displayID: target.displayID)
                 setEnabled(true)
             case .overlay:
                 gamma.deactivate()
                 try overlay.show(
                     plugin: plugin,
                     parameters: parameters(for: plugin),
-                    displayID: selectedDisplayID,
-                    frame: frame
+                    displayID: target.displayID,
+                    frame: target.frame
                 )
                 startTrackingIfNeeded()
                 setEnabled(true)
             case .capture:
                 gamma.deactivate()
-                startCapture(plugin: plugin, frame: frame)
+                startCapture(plugin: plugin, frame: target.frame, displayID: target.displayID)
             }
         } catch {
             disable()
@@ -340,16 +366,19 @@ final class EffectController: ObservableObject {
 
     /// область эффекта: рамка выбранного окна или весь дисплей.
     /// уровень 1 живёт в scanout целиком, областью его не ограничить
-    private func targetFrame(for plugin: ShaderPlugin) -> CGRect? {
+    private func target(for plugin: ShaderPlugin) -> EffectTarget? {
         guard windowModeEnabled, plugin.manifest.level != .gammaLUT else {
             guard let target = screen(for: selectedDisplayID) else {
+                // выключились не по просьбе человека: монитор вернётся, вернём и эффект.
+                // без флага эффект не поднимался после запуска с отстыкованным доком
+                waitingForDisplay = true
                 report(
                     title: String(localized: "Display unavailable"),
                     message: String(localized: "The display this effect was set to is no longer connected.")
                 )
                 return nil
             }
-            return target.frame
+            return EffectTarget(frame: target.frame, displayID: selectedDisplayID)
         }
         guard let id = trackedWindowID else {
             report(
@@ -365,23 +394,39 @@ final class EffectController: ObservableObject {
             )
             return nil
         }
-        return frame
+        // дисплей задаёт само окно, а не Picker в настройках: окно живёт там, где
+        // человек его оставил, и доли кадра обязаны считаться от того же экрана,
+        // с которого идёт захват
+        guard let target = screen(containing: frame) else {
+            report(
+                title: String(localized: "Window unavailable"),
+                message: String(localized: "The selected window is closed or minimised.")
+            )
+            return nil
+        }
+        return EffectTarget(frame: frame, displayID: target.displayID)
     }
 
     private func startTrackingIfNeeded() {
         guard windowModeEnabled, let id = trackedWindowID else { return }
         tracker = WindowTracker(windowID: id) { [weak self] frame in
             guard let self else { return }
-            if let frame {
-                self.overlay.updateFrame(frame)
-            } else {
+            guard let frame else {
                 // окно свернули или закрыли: эффект снимается, приложение остаётся работать
                 self.disable()
                 self.report(
                     title: String(localized: "Effect turned off"),
                     message: String(localized: "The window it followed is closed or minimised.")
                 )
+                return
             }
+            // окно уехало на другой монитор: одним переносом рамки тут не обойтись,
+            // потому что доли кадра и поток захвата привязаны к прежнему экрану
+            guard screen(containing: frame)?.displayID == self.activeDisplayID else {
+                self.enable()
+                return
+            }
+            self.overlay.updateFrame(frame)
         }
     }
 
@@ -432,9 +477,10 @@ final class EffectController: ObservableObject {
 
     @objc private func screensDidChange() {
         displays = availableDisplays()
-        let target = screen(for: selectedDisplayID)
 
-        if isEnabled, target == nil {
+        // пропал экран, на котором эффект лежит сейчас: в оконном режиме это не тот,
+        // что выбран в настройках, а тот, на котором стоит отслеживаемое окно
+        if isEnabled, screen(for: activeDisplayID) == nil {
             disable()
             // выключили не по просьбе человека, а потому что рисовать стало некуда
             waitingForDisplay = true
@@ -446,13 +492,13 @@ final class EffectController: ObservableObject {
         }
         // монитор вернулся: отстыкованный ноутбук не повод заставлять человека
         // включать эффект заново каждый раз
-        guard waitingForDisplay, target != nil else { return }
+        guard waitingForDisplay, screen(for: selectedDisplayID) != nil else { return }
         waitingForDisplay = false
         clearStatus()
         enable()
     }
 
-    private func startCapture(plugin: ShaderPlugin, frame: CGRect) {
+    private func startCapture(plugin: ShaderPlugin, frame: CGRect, displayID: CGDirectDisplayID) {
         guard ensureScreenRecordingAccess(for: plugin.manifest.name) else {
             disable()
             return
@@ -467,13 +513,16 @@ final class EffectController: ObservableObject {
                 try await overlay.showCapture(
                     plugin: plugin,
                     parameters: parameters(for: plugin),
-                    displayID: selectedDisplayID,
+                    displayID: displayID,
                     frame: frame,
                     showsCursor: showsCursor(for: plugin),
                     quality: captureQuality
                 ) { [weak self] error in
                     guard let self else { return }
                     self.disable()
+                    // поток мог упасть потому, что монитор под ним отключили: это не
+                    // выбор человека, и вернувшийся монитор должен вернуть эффект сам
+                    self.waitingForDisplay = screen(for: displayID) == nil
                     self.report(
                         title: String(localized: "Screen capture stopped"),
                         message: error.localizedDescription

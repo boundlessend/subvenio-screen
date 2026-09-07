@@ -95,6 +95,25 @@ final class PluginLoadingTests: XCTestCase {
         }
     }
 
+    /// папка без манифеста это чаще всего архив, распакованный лишним уровнем:
+    /// пропустить её молча значит оставить человека смотреть на меню без изменений
+    func testFolderWithoutManifestIsReported() throws {
+        let root = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("SubvenioScreenTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent("Nested/Preset"),
+            withIntermediateDirectories: true
+        )
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+
+        let loaded = loadPlugins(from: root)
+
+        XCTAssertTrue(loaded.plugins.isEmpty)
+        guard case .manifestMissing? = loaded.errors.first else {
+            return XCTFail("expected manifestMissing, got \(loaded.errors)")
+        }
+    }
+
     func testGammaPluginWithoutSettingsIsRejected() throws {
         let directory = try makePlugin(manifest: #"{"name": "Broken", "level": 1}"#)
         let loaded = loadPlugins(from: directory)

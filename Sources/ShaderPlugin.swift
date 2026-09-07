@@ -35,8 +35,10 @@ enum LocalizedText: Decodable, Equatable {
         self = .byLanguage(try container.decode([String: String].self))
     }
 
-    /// nil означает, что на языке интерфейса текста нет: подставлять чужой язык хуже,
-    /// чем обойтись без строки или собрать её из имени параметра
+    /// язык интерфейса, иначе английский, иначе ничего. английский держится
+    /// последней ступенью намеренно: пресет, у которого есть только "en", лучше
+    /// покажет её, чем пустое место. язык, которого нет и там, строки не даёт -
+    /// подпись тогда собирается из имени параметра
     var resolved: String? {
         switch self {
         case let .plain(text):
@@ -107,6 +109,8 @@ struct ShaderPlugin: Equatable {
 
 enum PluginError: LocalizedError {
     case installFailed(underlying: Error)
+    case alreadyInstalled(plugin: String)
+    case manifestMissing(plugin: String)
     case manifestUnreadable(plugin: String, underlying: Error)
     case sourceMissing(plugin: String)
     case gammaSettingsMissing(plugin: String)
@@ -126,6 +130,16 @@ enum PluginError: LocalizedError {
             return String(
                 format: String(localized: "bundled presets could not be installed - %@"),
                 underlying.localizedDescription
+            )
+        case let .alreadyInstalled(plugin):
+            return String(
+                format: String(localized: "%@: a preset with this folder name is already installed"),
+                plugin
+            )
+        case let .manifestMissing(plugin):
+            return String(
+                format: String(localized: "%@: this folder holds no manifest.json. An archive often unpacks one level deeper than it looks."),
+                plugin
             )
         case let .manifestUnreadable(plugin, underlying):
             return String(
@@ -194,7 +208,9 @@ enum PluginError: LocalizedError {
         switch self {
         case .installFailed:
             return String(localized: "Bundled presets")
-        case let .manifestUnreadable(plugin, _),
+        case let .alreadyInstalled(plugin),
+             let .manifestMissing(plugin),
+             let .manifestUnreadable(plugin, _),
              let .sourceMissing(plugin),
              let .gammaSettingsMissing(plugin),
              let .invalidGammaTint(plugin, _),
@@ -211,7 +227,8 @@ enum PluginError: LocalizedError {
     }
 }
 
-/// ~/Library/Application Support/SubvenioScreen/Shaders
+/// папка Shaders в контейнере песочницы:
+/// ~/Library/Containers/<bundle id>/Data/Library/Application Support/SubvenioScreen/Shaders
 func shadersDirectory() -> URL {
     let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     return support.appendingPathComponent("SubvenioScreen/Shaders", isDirectory: true)
@@ -240,6 +257,39 @@ func pluginDigest(_ directory: URL) -> String? {
 /// встроенный пресет возвращался бы на каждом запуске
 private func installedDigestKey(_ identifier: String) -> String {
     "bundled.\(identifier).digest"
+}
+
+/// отпечаток мог не сосчитаться: подкаталог внутри пресета или нечитаемый файл.
+/// записывать в этом случае нечего, а `set(nil:)` не пишет пустое значение,
+/// а удаляет ключ, после чего пресет навсегда считается правленым
+private func rememberDigest(of directory: URL, as identifier: String, in defaults: UserDefaults) {
+    guard let digest = pluginDigest(directory) else {
+        Log.plugins.error("could not fingerprint \(identifier, privacy: .public)")
+        return
+    }
+    defaults.set(digest, forKey: installedDigestKey(identifier))
+}
+
+/// подменяет папку пресета целиком: копия готовится рядом и встаёт на место одним
+/// движением. удаление перед копированием оставляло человека вовсе без пресета,
+/// если копирование обрывалось на середине
+private func replacePlugin(at destination: URL, with source: URL) throws {
+    let manager = FileManager.default
+    guard manager.fileExists(atPath: destination.path) else {
+        try manager.copyItem(at: source, to: destination)
+        return
+    }
+    let staging = destination
+        .deletingLastPathComponent()
+        .appendingPathComponent(".\(destination.lastPathComponent).incoming")
+    try? manager.removeItem(at: staging)
+    try manager.copyItem(at: source, to: staging)
+    do {
+        _ = try manager.replaceItemAt(destination, withItemAt: staging)
+    } catch {
+        try? manager.removeItem(at: staging)
+        throw error
+    }
 }
 
 /// копирует недостающие встроенные пресеты и обновляет те, которых пользователь не касался.
@@ -271,7 +321,7 @@ func installBundledPlugins(
             // с человеком; вернуть все встроенные умеет кнопка в настройках
             guard defaults.string(forKey: key) == nil else { continue }
             try FileManager.default.copyItem(at: entry, to: destination)
-            defaults.set(pluginDigest(destination), forKey: key)
+            rememberDigest(of: destination, as: identifier, in: defaults)
             continue
         }
 
@@ -279,15 +329,14 @@ func installBundledPlugins(
         guard let installed = defaults.string(forKey: key) else {
             // пресет приехал версией приложения, которая отпечатков ещё не вела:
             // считаем его правленым и запоминаем как есть, чтобы дальше механизм работал
-            defaults.set(onDisk, forKey: key)
+            rememberDigest(of: destination, as: identifier, in: defaults)
             continue
         }
         // пресет правил пользователь, либо он уже совпадает со встроенным
         guard onDisk == installed, pluginDigest(entry) != installed else { continue }
 
-        try FileManager.default.removeItem(at: destination)
-        try FileManager.default.copyItem(at: entry, to: destination)
-        defaults.set(pluginDigest(destination), forKey: key)
+        try replacePlugin(at: destination, with: entry)
+        rememberDigest(of: destination, as: identifier, in: defaults)
         Log.plugins.info("bundled preset updated: \(identifier, privacy: .public)")
     }
 }
@@ -311,14 +360,8 @@ func restoreBundledPlugins(
     )
     for entry in entries {
         let destination = directory.appendingPathComponent(entry.lastPathComponent)
-        if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
-        }
-        try FileManager.default.copyItem(at: entry, to: destination)
-        defaults.set(
-            pluginDigest(destination),
-            forKey: installedDigestKey(entry.lastPathComponent)
-        )
+        try replacePlugin(at: destination, with: entry)
+        rememberDigest(of: destination, as: entry.lastPathComponent, in: defaults)
     }
 }
 
@@ -354,6 +397,24 @@ fragment float4 overlay_fragment(VertexOut in [[stage_in]],
 }
 
 """
+
+/// ставит папку пресета, которую человек бросил на окно настроек. содержимое
+/// проверяется до копирования: архив часто распаковывается лишним уровнем
+/// вложенности, и без проверки в папке шейдеров оседало бы то, что приложение
+/// всё равно не прочитает
+func installDroppedPlugin(_ folder: URL, into directory: URL) throws {
+    let name = folder.lastPathComponent
+    let loaded = loadPlugins(from: folder.deletingLastPathComponent())
+    guard loaded.plugins.contains(where: { $0.identifier == name }) else {
+        throw PluginError.manifestMissing(plugin: name)
+    }
+    let destination = directory.appendingPathComponent(name)
+    guard !FileManager.default.fileExists(atPath: destination.path) else {
+        throw PluginError.alreadyInstalled(plugin: name)
+    }
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    try FileManager.default.copyItem(at: folder, to: destination)
+}
 
 /// создаёт папку с заготовкой и возвращает её. имя подбирается свободное,
 /// чтобы кнопка не переписала то, что человек уже написал
@@ -393,8 +454,17 @@ func loadPlugins(from directory: URL) -> (plugins: [ShaderPlugin], errors: [Plug
     var errors: [PluginError] = []
 
     for entry in entries.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+        // файлы рядом с пресетами не наше дело, а вот папка без манифеста это
+        // почти всегда распакованный лишним уровнем архив: молчать о ней значит
+        // оставить человека смотреть на меню, в котором ничего не изменилось
+        guard (try? entry.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else {
+            continue
+        }
         let manifestURL = entry.appendingPathComponent("manifest.json")
-        guard FileManager.default.fileExists(atPath: manifestURL.path) else { continue }
+        guard FileManager.default.fileExists(atPath: manifestURL.path) else {
+            errors.append(.manifestMissing(plugin: entry.lastPathComponent))
+            continue
+        }
 
         do {
             let manifest = try JSONDecoder().decode(

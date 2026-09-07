@@ -24,6 +24,20 @@ func screen(for displayID: CGDirectDisplayID) -> NSScreen? {
     NSScreen.screens.first { $0.displayID == displayID }
 }
 
+/// экран, на котором лежит рамка: тот, с которым у неё наибольшее пересечение.
+/// нужен оконному режиму, где дисплей задаёт само окно, а не выбор в настройках:
+/// иначе доли кадра считались бы от чужого экрана и уходили за пределы [0, 1]
+func screen(containing frame: CGRect) -> NSScreen? {
+    NSScreen.screens.max { left, right in
+        left.frame.intersection(frame).area < right.frame.intersection(frame).area
+    }
+}
+
+private extension CGRect {
+    /// нулевая у пустого пересечения, которое CoreGraphics отдаёт как .null
+    var area: CGFloat { isNull || isEmpty ? 0 : width * height }
+}
+
 /// доля кадра дисплея, которую занимает рамка: на весь экран это (0, 0, 1, 1).
 /// начало сверху слева, как у текстуры захвата, тогда как рамки Cocoa считаются снизу
 func sourceRect(for frame: CGRect, in bounds: CGRect) -> CGRect {
