@@ -21,22 +21,26 @@ where you left it after a restart.
 <p align="center"><img src="assets/presets.png" alt="The seventeen bundled presets"></p>
 
 The seventeen presets that ship with the app, in the order the menu groups them,
-each rendered through the same shader the screen gets. The effect itself cannot be screenshotted: the overlay is excluded
-from screen capture on purpose, so these are offline renders of the picture the
-settings window previews on.
+each rendered through the same shader the screen gets. These are offline renders
+of the picture the settings window previews on, because a screenshot of the real
+thing is unreliable: the overlay asks not to be captured, and whether that
+request is honoured depends on the version of macOS.
 
 ## Features
 
 - **Seventeen presets out of the box**, grouped in the menu by what they cost:
   free ones that rewrite the display table, ones that draw a layer over the
   screen, and ones that read the screen back.
-- **One global hotkey** for the whole screen, recorded in settings. No
-  Accessibility permission needed.
-- **Live tuning.** Every preset has its own sliders - grain strength, vignette,
-  scanline depth - and moving them changes the running effect immediately.
+- **One global hotkey** for the whole screen, recorded in settings, and a second
+  one for stepping through the presets if you want it. No Accessibility
+  permission needed.
+- **Live tuning.** Presets that draw or read the screen carry their own sliders -
+  grain strength, vignette, scanline depth - and moving them changes the running
+  effect immediately. The four free ones are shaped by the gamma section of their
+  manifest instead.
 - **A preview next to the sliders**, so you can see what a preset does before
   putting it on the whole screen. It runs on a picture that ships with the app,
-  so even the preset that reads the screen previews without asking for anything.
+  so even the presets that read the screen preview without asking for anything.
 - **Window-only mode.** Instead of the whole display, the effect can follow a
   single window as it moves and resizes.
 - **Pick your display** when more than one is connected.
@@ -46,8 +50,9 @@ settings window previews on.
   and problems are reported quietly through the menu bar icon instead of a modal
   dialog. Animated presets respect the system "Reduce Motion" setting.
 - **Your own effects.** Presets are folders with a Metal shader, not a fixed
-  list. Drop one in and it shows up in the menu without restarting the app, and
-  editing the one that is running changes the screen as you save.
+  list. Drop one onto the settings window and it shows up in the menu without
+  restarting the app, and editing the one that is running changes the screen as
+  you save.
 - **Update check** against the GitHub releases page - weekly by default, or
   daily, monthly or never, and there is a Check now button. The app never
   downloads or installs anything by itself; it tells you a version is out and
@@ -61,12 +66,19 @@ settings window previews on.
 1. Download the `.dmg` from the [Releases](../../releases/latest) page.
 2. Open it and drag **Subvenio Screen** into your **Applications** folder.
 3. The build carries an ad-hoc signature and is **not notarized**, so Gatekeeper
-   blocks it on the first launch. Open it once this way: **right click** (or
-   Control-click) the app in Applications and choose **Open**, then confirm in
-   the dialog. If macOS still refuses, go to **System Settings → Privacy &
-   Security**, scroll down and click **Open Anyway**.
+   blocks it on the first launch. Open it once, let macOS refuse, then go to
+   **System Settings → Privacy & Security**, scroll down and click **Open
+   Anyway**. On macOS 14 the shortcut still works: right click (or Control-click)
+   the app and choose **Open**. Apple removed that shortcut in macOS 15.
 
 After the first launch macOS remembers the choice and opens the app normally.
+
+Every release note carries the SHA-256 of its disk image. An ad-hoc signature
+says nothing about who built the file, so the sum is what there is to compare:
+
+```sh
+shasum -a 256 "Subvenio Screen 1.7.2.dmg"
+```
 
 If the app is reported as "damaged", the quarantine flag is the cause. Clear it
 once in Terminal:
@@ -79,10 +91,15 @@ The app checks the Releases page for a newer version - once a week unless you
 change it in settings - and tells you in its menu when one is out. Installing is
 still a manual step: a new version means a new disk image from Releases.
 
-An ad-hoc signature has no lasting identity behind it, and macOS ties the Screen
-Recording permission to exactly that. An update therefore reads as a different
-app: the eight presets that read the screen ask for the permission again after
-one. The nine that need nothing are unaffected.
+macOS remembers a permission against the app's designated requirement, and for an
+ad-hoc signature that requirement is the hash of one particular build. Every
+update is therefore a different app as far as the system is concerned: the eight
+presets that read the screen ask for Screen Recording again after one. The nine
+that need nothing are unaffected.
+
+macOS 15 added a second prompt of its own. An app that takes the whole screen
+without going through the system picker is asked to confirm that roughly once a
+month, and this one takes the whole screen by design.
 
 ## The presets
 
@@ -127,12 +144,14 @@ to disk and nothing leaves the machine.
 ## Your own effects
 
 A preset is a folder with a `manifest.json` and a Metal fragment function.
-**New preset from template** in settings writes a working one for you and shows
-it in Finder; **Open shaders folder** takes you to the rest. Save a file and the
-menu updates itself, no restart - and if you edit the preset that is currently
-on screen, the screen follows. A broken preset shows the actual error instead of
-quietly disappearing: a manifest that does not parse is named in the menu, and a
-shader that does not compile shows the compiler's message under the preview.
+Drop the folder onto the settings window and it installs itself; **New preset
+from template** writes a working one for you and shows it in Finder; **Open
+shaders folder** takes you to the rest. Save a file and the menu updates itself,
+no restart - and if you edit the preset that is currently on screen, the screen
+follows. A broken preset shows the actual error instead of quietly disappearing:
+a manifest that does not parse is named in the menu, a folder that holds no
+manifest at all says so, and a shader that does not compile shows the compiler's
+message under the preview.
 
 A preset can name its own menu bar icon and describe itself in a line that
 shows up under the preview and as a tooltip in the menu, in English or in
@@ -160,10 +179,12 @@ before you drop it in, the same way you would read a script.
   preset off restores every display to its ColorSync profile, because the public
   API to undo a gamma table has no per-display counterpart; whatever else had
   tinted the screen applies itself again on its own schedule.
-- Invert and Sepia cover the whole display by nature and cannot be confined to a
-  single window.
-- The overlay is invisible to screenshots and to screen recording, so the effect
-  will not show up in a capture of your own screen.
+- The four free presets cover the whole display by nature and cannot be confined
+  to a single window.
+- The overlay asks not to be captured, so on macOS 14 the effect will not show up
+  in a screenshot or a recording of your own screen. macOS 15.4 stopped honouring
+  that request for apps recording through ScreenCaptureKit, so a capture made
+  there may well include it.
 - Apple Silicon only.
 
 ## Under the hood
@@ -175,6 +196,5 @@ Built from source with `make run`; the details live in
 
 ## License
 
-[BSD 3-Clause](LICENSE). The two dependencies,
-[KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) and
-[Pow](https://github.com/EmergeTools/Pow), are MIT.
+[BSD 3-Clause](LICENSE). The one dependency,
+[KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts), is MIT.

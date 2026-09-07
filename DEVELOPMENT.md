@@ -12,34 +12,52 @@ Xcode project is generated from `project.yml` and is not tracked in git.
 ```sh
 make run      # generate, build, launch
 make test     # pure transforms, preset installation, every bundled shader
+make lint     # the swiftlint --strict that CI runs
 make release  # signed Release build packaged as a .dmg in dist/
 ```
 
-CI additionally runs `swiftlint lint --strict`, so a warning fails the build.
-What `.swiftlint.yml` turns off is turned off with the reason next to it.
+CI runs `make lint` too, and a warning fails the build. What `.swiftlint.yml`
+turns off is turned off with the reason next to it.
 
 `make release` needs [create-dmg](https://github.com/sindresorhus/create-dmg)
-(`brew install create-dmg`). Releases are versioned by hand: bump
-`MARKETING_VERSION` in `project.yml`, tag the commit (`git tag -a v1.1.0`) and
-attach the disk image to a GitHub release.
+(`npm install --global create-dmg`; the Homebrew formula of that name is a
+different tool with an incompatible command line, and the script refuses it). It
+runs the changelog check, the linter and the tests before it builds anything.
+Releases are versioned by hand: bump `MARKETING_VERSION` in `project.yml`, tag
+the commit (`git tag -a v1.1.0`) and attach the disk image to a GitHub release
+along with the SHA-256 the script prints.
 
 Signing defaults to ad-hoc and needs nothing from you: no developer account, no
-certificate. The cost shows up only on level 3 presets, where TCC binds the
-Screen Recording grant to team id plus bundle id: an ad-hoc signature changes
-from build to build, so the permission has to be granted again after each one. If
-you work on capture regularly, pin your own certificate in
-`Signing.local.xcconfig` (git-ignored) and the grant survives rebuilds:
+certificate. The cost shows up only on level 3 presets. macOS stores a
+permission against the app's *designated requirement*, and for an ad-hoc
+signature that requirement is the code hash of one particular build:
+
+```sh
+codesign --display -r - "build/Build/Products/Release/Subvenio Screen.app"
+# ad-hoc:      designated => cdhash H"f2af34..."
+# certificate: designated => identifier "..." and anchor apple generic and ...
+```
+
+Every rebuild produces a different hash, so the Screen Recording grant is gone
+with it. A self-signed certificate fixes that for free, without an Apple
+developer account: Keychain Access → Certificate Assistant → Create a
+Certificate, type **Code Signing**, then pin it in `Signing.local.xcconfig`
+(git-ignored):
 
 ```
 CODE_SIGN_STYLE = Manual
 CODE_SIGN_IDENTITY = <SHA-1 from security find-identity -v -p codesigning>
-DEVELOPMENT_TEAM = <your team id>
+DEVELOPMENT_TEAM = <your team id, or empty for a self-signed certificate>
 ```
 
+The requirement stops moving and the grant survives rebuilds. Gatekeeper is not
+fooled by it: a self-signed build is still refused on another machine the same
+way an ad-hoc one is, because neither is notarized.
+
 `make release` ignores that file and signs ad-hoc whatever is in the keychain,
-because a certificate travels inside the binary with the name and the address it
-was issued to. The disk image is signed the same way, since `create-dmg` would
-otherwise pick the first identity it finds by itself.
+because an Apple certificate travels inside the binary with the name and the
+address it was issued to. The disk image is signed the same way, since
+`create-dmg` would otherwise pick the first identity it finds by itself.
 
 ## Layout
 
@@ -59,7 +77,7 @@ Sources/            Swift, one file per concern
   Capture           level 3 backend
   Displays          display identity and the list settings picks from
   Permissions       Screen Recording onboarding and alerts
-  Shortcuts         the global hotkey and its default combination
+  Shortcuts         the two global hotkeys and the default combination
   LaunchAtLogin     registration through SMAppService
   Updates           the release check and its interval
   ShaderPlugin      manifest model, validation, loader and installer
@@ -80,19 +98,22 @@ geometry through `CGWindowListCopyWindowInfo`, gamma through
 `CGGetDisplayTransferByTable`, capture through the app's own log output:
 
 ```sh
-log stream --info --debug --predicate 'subsystem == "dev.senya.SubvenioScreen"'
+log stream --info --debug --predicate 'subsystem == "dev.boundlessend.SubvenioScreen"'
 ```
 
 One trap worth knowing: the overlay window sets `sharingType = .none`, so a
-screenshot can never confirm that the effect is drawn. Render the shader offline
-into a texture instead when you need to look at it.
+screenshot may or may not show the effect depending on the version of macOS, and
+either answer proves nothing. Render the shader offline into a texture instead
+when you need to look at it. That flag is a request, not a guarantee: since
+macOS 15.4 ScreenCaptureKit ignores it, which is why level 3 excludes its own
+overlay window through `SCContentFilter` rather than relying on it.
 
 ## Writing a shader
 
 Presets live in the app's sandbox container:
 
 ```
-~/Library/Containers/dev.senya.SubvenioScreen/Data/Library/Application Support/SubvenioScreen/Shaders/
+~/Library/Containers/dev.boundlessend.SubvenioScreen/Data/Library/Application Support/SubvenioScreen/Shaders/
 ```
 
 Nobody should have to type that, so settings has an "Open shaders folder"
@@ -140,10 +161,11 @@ becomes a slider, so both are validated before anything is compiled.
 preview and as the tooltip in the menu bar. `title` is the caption of a slider;
 without one it is assembled from the parameter name, so `grainStrength` reads as
 Grain Strength. Both accept either a plain string or an object of language code
-to text, and the app picks the language of the interface. A language it cannot
-find leaves the description out and the caption assembled from the name, rather
-than showing text in a language nobody asked for - which is why the bundled
-presets carry `en` and `ru` descriptions but only `ru` captions.
+to text, and the app picks the language of the interface, falling back to `en`.
+A preset that carries neither leaves the description out and the caption
+assembled from the parameter name, rather than showing text in a language nobody
+asked for - which is why the bundled presets carry `en` and `ru` descriptions but
+only `ru` captions.
 
 `icon` is an SF Symbols name shown next to the preset in the menu bar. It is
 optional, and a name the system does not know falls back to a symbol for the
@@ -173,6 +195,10 @@ Available in every shader:
 - `u.resolution`, `u.scale`, `u.time` - time wraps once a day
 - `u.sourceOrigin`, `u.sourceSize` - which slice of the display frame this
   overlay shows, and `overlay_source_uv(in.uv, u)` to sample it
+- `overlay_source_offset(pixels, u)` - a step measured in pixels, converted to
+  the capture frame. Offsetting in uv directly stretches a circle into an ellipse
+  on a wide screen and changes size with pixel density
+- `overlay_bayer4(uint2)` - the ordered 4x4 dither threshold for a cell
 - `overlay_hash(float2)` and `overlay_hash3(float3)` for noise,
   `overlay_sampler` for level 3 textures
 
@@ -203,7 +229,8 @@ Level 1 presets carry a `gamma` section instead of a shader:
 
 A manifest that does not parse or names a level that is not supported shows up
 in the menu and in the settings window with the actual error text instead of
-being skipped silently. A shader that does not compile is only found when
+being skipped silently, and so does a folder that holds no manifest at all -
+which is what an archive unpacked one level deeper than it looks produces. A shader that does not compile is only found when
 something builds a pipeline from it, which the preview does as soon as the
 preset is selected: the compiler's message appears under the preview. For the
 bundled presets `make test` compiles them all, so a broken one never reaches a
