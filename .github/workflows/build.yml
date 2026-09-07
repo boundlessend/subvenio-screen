@@ -21,7 +21,7 @@ jobs:
     # как приложение выглядит и ведёт себя на актуальной macOS
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # версии закреплены, а не взяты из brew: со --strict любое новое правило
       # свежего SwiftLint валит чужой pull request, и виноватым выглядит автор
