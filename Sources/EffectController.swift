@@ -127,10 +127,7 @@ final class EffectController: ObservableObject {
     /// экран, на котором эффект лежит сейчас. в оконном режиме он задаётся окном,
     /// а не выбором в настройках, и по нему видно, что окно уехало на другой монитор
     private var activeDisplayID: CGDirectDisplayID = CGMainDisplayID()
-    private let fullScreenProbe = FullScreenProbe()
-    /// эффект включён, но на его дисплее чужое приложение в полном экране: видео,
-    /// презентация, игра. рисовать поверх такого незачем, и эффект ждёт в стороне
-    private var hiddenByFullScreen = false
+    private let fullScreen = FullScreenVideoWatch()
 
     init() {
         let defaults = UserDefaults.standard
@@ -155,12 +152,7 @@ final class EffectController: ObservableObject {
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil
         )
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(fullScreenMayHaveChanged),
-            name: NSWorkspace.activeSpaceDidChangeNotification,
-            object: nil
-        )
+        fullScreen.onChange = { [weak self] in self?.enable() }
     }
 
     /// без отката на первый попавшийся пресет: выбор пользователя не подменяется молча
@@ -348,15 +340,10 @@ final class EffectController: ObservableObject {
         }
         activeDisplayID = target.displayID
 
-        fullScreenProbe.place(on: target.screen)
-        hiddenByFullScreen = fullScreenProbe.isCoveredByFullScreen
-        // зонд, выведенный или переставленный только что, отвечает предварительно:
-        // система уносит его в нужное пространство через десятки миллисекунд и молча
-        DispatchQueue.main.asyncAfter(deadline: .now() + FullScreenProbe.settleTime) { [weak self] in
-            MainActor.assumeIsolated { self?.fullScreenMayHaveChanged() }
-        }
-        guard !hiddenByFullScreen else {
-            Log.effects.info("full screen on the display, the effect waits for it to end")
+        // фильм в полном экране это чужая картинка: эффект остаётся включённым,
+        // но уходит с экрана до выхода из полного экрана
+        if fullScreen.yieldsToVideo(on: target.screen) {
+            Log.effects.info("full screen video on the display, the effect waits for it to end")
             overlay.hide()
             gamma.deactivate()
             setEnabled(true)
@@ -395,7 +382,7 @@ final class EffectController: ObservableObject {
     func disable() {
         enableGeneration += 1
         isStarting = false
-        hiddenByFullScreen = false
+        fullScreen.stop()
         tracker = nil
         overlay.hide()
         gamma.deactivate()
@@ -533,14 +520,6 @@ final class EffectController: ObservableObject {
         guard waitingForDisplay, screen(for: selectedDisplayID) != nil else { return }
         waitingForDisplay = false
         clearStatus()
-        enable()
-    }
-
-    /// вход в полный экран и выход из него это смена пространства. перезапуск только
-    /// на этом переходе: листание обычных рабочих столов стоило бы уровню 3 нового
-    /// потока захвата на каждый свайп
-    @objc private func fullScreenMayHaveChanged() {
-        guard isActive, fullScreenProbe.isCoveredByFullScreen != hiddenByFullScreen else { return }
         enable()
     }
 

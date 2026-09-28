@@ -48,9 +48,10 @@ request is honoured depends on the version of macOS.
   the effect pauses when the screen sleeps and steps down in Low Power Mode.
 - **Stays out of the way.** No Dock icon, no windows unless you open settings,
   and problems are reported quietly through the menu bar icon instead of a modal
-  dialog. Animated presets respect the system "Reduce Motion" setting. While
-  another app is in full screen on the effect's display - a film, a
-  presentation, a game - the effect steps aside and comes back when you leave.
+  dialog. Animated presets respect the system "Reduce Motion" setting. While a
+  video plays in full screen on the effect's display, the effect steps aside and
+  comes back when you leave full screen; an editor or a terminal in full screen
+  keeps it.
 - **Your own effects.** Presets are folders with a Metal shader, not a fixed
   list. Drop one onto the settings window and it shows up in the menu without
   restarting the app, and editing the one that is running changes the screen as
@@ -186,6 +187,9 @@ before you drop it in, the same way you would read a script.
 - Full screen means the macOS one, which opens a space of its own. A player's
   legacy full screen mode fills the screen without it, and the effect stays over
   it like over any other window.
+- A video is recognised by its player keeping the display awake, which players
+  and browsers do while they play. Safari does not do it for a video that loops,
+  so the effect stays over such a clip.
 - The overlay asks not to be captured, so on macOS 14 the effect will not show up
   in a screenshot or a recording of your own screen. macOS 15.4 stopped honouring
   that request for apps recording through ScreenCaptureKit, so a capture made

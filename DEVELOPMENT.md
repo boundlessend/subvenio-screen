@@ -84,7 +84,7 @@ Sources/            Swift, one file per concern
   ShaderPipeline    uniform layout, shader prelude, runtime compilation
   PluginWatcher     FSEvents watch over the plugin folder
   WindowTracking    window-scoped mode
-  FullScreen        the probe that tells when another app is in full screen
+  FullScreen        full screen video: the space probe and the playback check
   Logging           os.Logger categories
 Tests/              pure transforms, preset installation, bundled shaders
 Resources/Shaders/  bundled presets

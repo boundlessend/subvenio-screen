@@ -365,24 +365,37 @@ were then computed against a screen the capture stream was not reading, and the
 shader sampled the edge of the wrong desktop. Dragging across the boundary
 restarts the effect on the new screen.
 
-### 29. Full screen is told by a window that cannot enter it
+### 29. The effect steps aside for full screen video
 
-While another app is in full screen on the effect's display, the effect steps
-aside: a film or a presentation is someone else's picture. It stays on as far
-as the menu bar, the hotkey and the next launch are concerned, and returns when
-the display leaves full screen. Level 3 stops its capture stream for that time,
-so a film does not pay for a filter nobody sees.
+While a video plays in full screen on the effect's display, the effect steps
+aside: a film is someone else's picture. It stays on as far as the menu bar, the
+hotkey and the next launch are concerned, and returns when the display leaves
+full screen. Level 3 stops its capture stream for that time, so a film does not
+pay for a filter nobody sees. An editor or a terminal in full screen keeps the
+effect: full screen alone is a way of working, not a request to stop.
 
-There is no public API that says another app is in full screen, and Apple's
-engineers say so on the developer forums. `currentSystemPresentationOptions`
-stays empty, because it reports the older presentation options rather than a
-full screen space. What answers is a transparent window one point in size with
+Full screen comes first, and there is no public API for it: Apple's engineers
+say so on the developer forums, and `currentSystemPresentationOptions` stays
+empty, because it reports the older presentation options rather than a full
+screen space. What answers is a transparent window one point in size with
 `.canJoinAllSpaces` and `.fullScreenNone`: it lives on every desktop and is
 never taken into a full screen space, so `isOnActiveSpace` turns false exactly
 while its display shows one. It is read when `activeSpaceDidChangeNotification`
-arrives, not on a timer. Without `.fullScreenNone` the probe is useless: on
-macOS 27 a window that only joins all spaces is carried into full screen ones as
-well.
+arrives. Without `.fullScreenNone` the probe is useless: on macOS 27 a window
+that only joins all spaces is carried into full screen ones as well.
+
+Video is an app keeping the display awake. IINA, Chrome ("Video Wake Lock") and
+Safari ("HTMLMediaElement playback") hold a display sleep assertion while they
+play, each in the process that owns the full screen window, so the check is that
+app's assertions rather than the system total, which a keep-awake utility can
+hold all day. They drop it on pause, so once the effect has stepped aside it
+stays aside until full screen ends instead of coming back over every paused
+frame. Playback that starts after the space was entered changes no space and
+announces nothing, so a full screen without video is polled once a second, at
+0.2 ms a poll, and only until video is found or full screen ends. Assertions do
+post a notify(3) key on every change, but its name lives in a private header.
+Safari holds no assertion for a video that loops, so the effect stays over such
+a clip.
 
 A probe that has just been ordered in or moved answers provisionally: for about
 twenty milliseconds it counts as being on the current space, full screen
@@ -394,7 +407,7 @@ restored immediately, it flashed over a film that was already in full screen.
 There is no signal to wait for instead, because on an ordinary desktop the
 probe's first answer is already the final one.
 
-Two alternatives were measured and turned down. The private
+Two alternatives for full screen were measured and turned down. The private
 `SLSCopyManagedDisplaySpaces` reports the type of the current space exactly and
 works inside the sandbox, but it is a private API, and those stay out of the
 foundation here. The window list cannot tell a full screen window from a zoomed
@@ -402,10 +415,7 @@ one: on a display with a notch both sit under it in the same frame once the Dock
 hides itself.
 
 Only full screen that opens a space of its own counts; a player's legacy mode is
-an ordinary window over the desktop. Telling a film from a full screen editor
-was left out on purpose. Players do hold a display sleep assertion while they
-play, but they drop it on pause, which would bring the effect back over every
-paused frame, and keep-awake utilities hold the same assertion all day.
+an ordinary window over the desktop.
 
 ## System permissions
 
