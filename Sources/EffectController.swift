@@ -19,7 +19,9 @@ struct EffectStatus {
 /// это выбранный монитор, в оконном режиме тот, на котором сейчас лежит окно
 struct EffectTarget {
     let frame: CGRect
-    let displayID: CGDirectDisplayID
+    let screen: NSScreen
+
+    var displayID: CGDirectDisplayID { screen.displayID }
 }
 
 /// состояние эффекта: какой пресет выбран, включён ли он и с какими параметрами.
@@ -125,6 +127,10 @@ final class EffectController: ObservableObject {
     /// экран, на котором эффект лежит сейчас. в оконном режиме он задаётся окном,
     /// а не выбором в настройках, и по нему видно, что окно уехало на другой монитор
     private var activeDisplayID: CGDirectDisplayID = CGMainDisplayID()
+    private let fullScreenProbe = FullScreenProbe()
+    /// эффект включён, но на его дисплее чужое приложение в полном экране: видео,
+    /// презентация, игра. рисовать поверх такого незачем, и эффект ждёт в стороне
+    private var hiddenByFullScreen = false
 
     init() {
         let defaults = UserDefaults.standard
@@ -147,6 +153,12 @@ final class EffectController: ObservableObject {
             self,
             selector: #selector(screensDidChange),
             name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(fullScreenMayHaveChanged),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil
         )
     }
@@ -292,7 +304,17 @@ final class EffectController: ObservableObject {
             )
             return
         }
-        enable()
+        // зонд полного экрана при запуске ещё не осел, и включение сразу мелькнуло бы
+        // эффектом поверх уже открытого полноэкранного видео. ждать приходится время,
+        // а не сигнал: на обычном рабочем столе первый ответ зонда уже окончательный
+        let generation = enableGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + FullScreenProbe.settleTime) { [weak self] in
+            MainActor.assumeIsolated {
+                // за это время человек мог сам нажать хоткей: его решение главнее
+                guard let self, generation == self.enableGeneration else { return }
+                self.enable()
+            }
+        }
     }
 
     func toggle() {
@@ -326,6 +348,21 @@ final class EffectController: ObservableObject {
         }
         activeDisplayID = target.displayID
 
+        fullScreenProbe.place(on: target.screen)
+        hiddenByFullScreen = fullScreenProbe.isCoveredByFullScreen
+        // зонд, выведенный или переставленный только что, отвечает предварительно:
+        // система уносит его в нужное пространство через десятки миллисекунд и молча
+        DispatchQueue.main.asyncAfter(deadline: .now() + FullScreenProbe.settleTime) { [weak self] in
+            MainActor.assumeIsolated { self?.fullScreenMayHaveChanged() }
+        }
+        guard !hiddenByFullScreen else {
+            Log.effects.info("full screen on the display, the effect waits for it to end")
+            overlay.hide()
+            gamma.deactivate()
+            setEnabled(true)
+            return
+        }
+
         do {
             switch plugin.kind {
             case let .gamma(settings):
@@ -358,6 +395,7 @@ final class EffectController: ObservableObject {
     func disable() {
         enableGeneration += 1
         isStarting = false
+        hiddenByFullScreen = false
         tracker = nil
         overlay.hide()
         gamma.deactivate()
@@ -378,7 +416,7 @@ final class EffectController: ObservableObject {
                 )
                 return nil
             }
-            return EffectTarget(frame: target.frame, displayID: selectedDisplayID)
+            return EffectTarget(frame: target.frame, screen: target)
         }
         guard let id = trackedWindowID else {
             report(
@@ -404,7 +442,7 @@ final class EffectController: ObservableObject {
             )
             return nil
         }
-        return EffectTarget(frame: frame, displayID: target.displayID)
+        return EffectTarget(frame: frame, screen: target)
     }
 
     private func startTrackingIfNeeded() {
@@ -495,6 +533,14 @@ final class EffectController: ObservableObject {
         guard waitingForDisplay, screen(for: selectedDisplayID) != nil else { return }
         waitingForDisplay = false
         clearStatus()
+        enable()
+    }
+
+    /// вход в полный экран и выход из него это смена пространства. перезапуск только
+    /// на этом переходе: листание обычных рабочих столов стоило бы уровню 3 нового
+    /// потока захвата на каждый свайп
+    @objc private func fullScreenMayHaveChanged() {
+        guard isActive, fullScreenProbe.isCoveredByFullScreen != hiddenByFullScreen else { return }
         enable()
     }
 
