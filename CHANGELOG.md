@@ -4,6 +4,21 @@ Notable changes per release. Versions follow [SemVer](https://semver.org), and
 every release from 1.1.0 on ships as a disk image on the
 [Releases](https://github.com/boundlessend/subvenio-screen/releases) page.
 
+## 2.1.0
+
+### Added
+
+- **The effect steps aside for full screen video.** While a player or a browser
+  plays a video in full screen on the effect's display, the effect leaves the
+  screen and comes back when full screen ends. A pause does not bring it back
+  over the stopped frame, and an editor or a terminal in full screen keeps the
+  effect: only an app that keeps the display awake counts as playing, which is
+  what IINA, Chrome and Safari do while a video runs. Level 3 stops reading the
+  screen for that time. Safari does not mark a looping video that way, so the
+  effect stays over such a clip.
+- **A switch keeps the effect over full screen video**, for whoever wants the
+  grain on the film too. It is on the Display tab and off by default.
+
 ## 2.0.0
 
 ### Changed
