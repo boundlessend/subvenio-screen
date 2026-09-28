@@ -35,6 +35,7 @@ final class EffectController: ObservableObject {
     private static let captureScaleKey = "capture.scale"
     private static let captureFrameRateKey = "capture.frameRateCap"
     private static let windowModeKey = "windowMode"
+    private static let keepsOverFullScreenVideoKey = "keepsOverFullScreenVideo"
 
     @Published private(set) var plugins: [ShaderPlugin] = []
     @Published private(set) var loadErrors: [PluginError] = []
@@ -91,6 +92,18 @@ final class EffectController: ObservableObject {
         }
     }
 
+    /// эффект не уходит и с полноэкранного видео. по умолчанию уходит: фильм под
+    /// зерном и сепией это чужая картинка, испорченная без спроса
+    @Published var keepsOverFullScreenVideo: Bool {
+        didSet {
+            guard keepsOverFullScreenVideo != oldValue else { return }
+            UserDefaults.standard.set(keepsOverFullScreenVideo, forKey: Self.keepsOverFullScreenVideoKey)
+            if isActive {
+                enable()
+            }
+        }
+    }
+
     @Published var trackedWindowID: CGWindowID? {
         didSet {
             guard trackedWindowID != oldValue, isActive, windowModeEnabled else { return }
@@ -135,6 +148,7 @@ final class EffectController: ObservableObject {
         selectedDisplayID = storedDisplay > 0 ? CGDirectDisplayID(storedDisplay) : CGMainDisplayID()
         selectedIdentifier = defaults.string(forKey: Self.selectedShaderKey)
         windowModeEnabled = defaults.bool(forKey: Self.windowModeKey)
+        keepsOverFullScreenVideo = defaults.bool(forKey: Self.keepsOverFullScreenVideoKey)
         let storedScale = defaults.double(forKey: Self.captureScaleKey)
         captureQuality = CaptureQuality(
             scale: storedScale > 0 ? storedScale : 1,
@@ -342,7 +356,9 @@ final class EffectController: ObservableObject {
 
         // фильм в полном экране это чужая картинка: эффект остаётся включённым,
         // но уходит с экрана до выхода из полного экрана
-        if fullScreen.yieldsToVideo(on: target.screen) {
+        if keepsOverFullScreenVideo {
+            fullScreen.stop()
+        } else if fullScreen.yieldsToVideo(on: target.screen) {
             Log.effects.info("full screen video on the display, the effect waits for it to end")
             overlay.hide()
             gamma.deactivate()

@@ -760,6 +760,17 @@
         }
       }
     },
+    "Keep the effect over full-screen video": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставлять эффект поверх видео в полном экране"
+          }
+        }
+      }
+    },
     "Later": {
       "extractionState": "manual",
       "localizations": {

@@ -372,7 +372,9 @@ aside: a film is someone else's picture. It stays on as far as the menu bar, the
 hotkey and the next launch are concerned, and returns when the display leaves
 full screen. Level 3 stops its capture stream for that time, so a film does not
 pay for a filter nobody sees. An editor or a terminal in full screen keeps the
-effect: full screen alone is a way of working, not a request to stop.
+effect: full screen alone is a way of working, not a request to stop. A switch
+on the Display tab, off by default, keeps the effect over video as well, for
+whoever wants the grain on the film too.
 
 Full screen comes first, and there is no public API for it: Apple's engineers
 say so on the developer forums, and `currentSystemPresentationOptions` stays

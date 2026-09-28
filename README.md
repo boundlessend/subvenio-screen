@@ -51,7 +51,7 @@ request is honoured depends on the version of macOS.
   dialog. Animated presets respect the system "Reduce Motion" setting. While a
   video plays in full screen on the effect's display, the effect steps aside and
   comes back when you leave full screen; an editor or a terminal in full screen
-  keeps it.
+  keeps it. A switch on the Display tab keeps it over video too.
 - **Your own effects.** Presets are folders with a Metal shader, not a fixed
   list. Drop one onto the settings window and it shows up in the menu without
   restarting the app, and editing the one that is running changes the screen as

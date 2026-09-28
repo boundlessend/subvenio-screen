@@ -384,6 +384,8 @@ struct DisplaySettings: View {
                     }
                 }
 
+                Toggle("Keep the effect over full-screen video", isOn: $effects.keepsOverFullScreenVideo)
+
                 Toggle("Only under the selected window", isOn: $effects.windowModeEnabled)
 
                 if effects.windowModeEnabled {
